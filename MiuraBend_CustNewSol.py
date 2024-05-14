@@ -20,7 +20,7 @@ phi = pi / 6
 u_s = sqrt(3.0) * cos(phi / 2)
 v_s = 2 * sqrt(2.0 / (5 - 3 * cos(phi)))
 a, b = u_s/v_s , 1.0
-NN = 50
+NN = 40
 domain = mesh.create_rectangle(comm=MPI.COMM_WORLD, points=( (0.0, 0.0), (a, b) ), n=(NN, NN),
                             cell_type=CellType.quadrilateral,
                             ghost_mode=GhostMode.shared_facet)
@@ -141,9 +141,7 @@ bcs = [bc_CR, bc_CL, bc_C]
 
 # Create tags for facets subjected to gradient Dirichlet boundary conditions
 marked_facets = np.hstack([facets_CL, facets_CR])
-marked_values = np.hstack([np.full_like(facets_CL, 1), np.full_like(facets_CR, 1)])
-# marked_facets = facets_CL
-# marked_values = np.full_like(facets_CL, 1)
+marked_values = np.hstack([np.full_like(facets_CL, 1), np.full_like(facets_CR, 2)])
 sorted_facets = np.argsort(marked_facets)
 facet_tag = mesh.meshtags(domain, fdim, marked_facets[sorted_facets], marked_values[sorted_facets])
 
@@ -197,19 +195,37 @@ h_avg = avg(h)  # average size of cells sharing a facet
 IPT = 1.0/2.0 * alpha / h_avg * inner( jump( F, n_F ), jump( F, n_F ) ) \
         - inner( avg( dot( dot( H, n_F), n_F) ) , jump( F, n_F) )
 
-# weak gradient Dirichlet boundary conditions
-GDBC = 1.0/2.0 * alpha / h * inner( dot( grad(u) , n_F),  dot( grad(u) , n_F) ) \
-       - inner(  dot( grad(u) , n_F), dot( dot( H, n_F), n_F) )
 
-# IPT = 1.0/2.0 * alpha / h_avg * inner( jump( grad(u), n_F ), jump( grad(u), n_F ) ) \
-#         - inner( avg( dot( dot( H, n_F), n_F) ) , jump( grad(u), n_F) )
-#
+# weak gradient Dirichlet boundary conditions
+# def G_b(x):
+#     return np.vstack( (x[0], x[1], 0.0 * x[0]) )
+
+def GR_b(x):
+    return np.vstack( ( np.ones_like(x[0]), np.zeros_like(x[0]), np.zeros_like(x[0]) ) )
+
+
+def GL_b(x):
+    return np.vstack( ( np.ones_like(x[0])*(-1), np.zeros_like(x[0]), np.zeros_like(x[0]) ) )
+
+
+GR_be = Function(Q)
+GR_be.interpolate(GR_b)
+GL_be = Function(Q)
+GL_be.interpolate(GL_b)
+
 # # Weak gradient Dirichlet boundary conditions
+GDBC_R = 1.0/2.0 * alpha / h * inner( dot( F , n_F) - GR_be,  dot( F , n_F) - GR_be ) \
+       - inner(  dot( F, n_F) - GR_be , dot( dot( H, n_F), n_F) )
+
+GDBC_L = 1.0/2.0 * alpha / h * inner( dot( F , n_F) - GL_be,  dot( F , n_F) - GL_be ) \
+       - inner(  dot( F, n_F) - GL_be , dot( dot( H, n_F), n_F) )
+
 # GDBC = 1.0/2.0 * alpha / h * inner( dot( grad(u) , n_F),  dot( grad(u) , n_F) ) \
 #        - inner(  dot( grad(u) , n_F), dot( dot( H, n_F), n_F) )
 
+
 # first variation of Ee
-Ee_Var = Ee + IPT * dS + GDBC * ds(1)
+Ee_Var = Ee + IPT * dS + GDBC_R * ds(2) + GDBC_L * ds(1)
 # Ee_Var = Ee + IPT * dS
 
 # weak form
@@ -259,7 +275,7 @@ while i < max_iterations:
     correction_norm = dU.vector.norm(0)
     dU_norm.append(correction_norm)
 
-    if correction_norm < 1e-10:
+    if correction_norm < 1e-8:
         break
 
 # Convergence rate
@@ -301,16 +317,16 @@ if not pyvista.OFF_SCREEN:
 else:
     figure_as_array = p.screenshot("deflection.png")
 
-# Export displacement field
-num_sub_spaces = 3
-num_dofs_per_component = int(len(uh_i.x.array)/3)
-# print(num_dofs_per_component, num_sub_spaces)
-vector = np.zeros((num_sub_spaces, num_dofs_per_component))
-for i in range(num_sub_spaces):
-    vector[i] = uh_i.sub(i).collapse().x.array
-xx = V2.tabulate_dof_coordinates()
-vector = vector.T
-out = open("Displacement_SS.csv", "w")
-for coord, vec in zip(xx, vector):
-    print(f"{coord[0]}, {coord[1]}, {coord[0]}, {coord[1]}, {vec[2]}", file=out)
-out.close()
+# # Export displacement field
+# num_sub_spaces = 3
+# num_dofs_per_component = int(len(uh_i.x.array)/3)
+# # print(num_dofs_per_component, num_sub_spaces)
+# vector = np.zeros((num_sub_spaces, num_dofs_per_component))
+# for i in range(num_sub_spaces):
+#     vector[i] = uh_i.sub(i).collapse().x.array
+# xx = V2.tabulate_dof_coordinates()
+# vector = vector.T
+# out = open("Displacement_SS.csv", "w")
+# for coord, vec in zip(xx, vector):
+#     print(f"{coord[0]}, {coord[1]}, {coord[0]}, {coord[1]}, {vec[2]}", file=out)
+# out.close()
