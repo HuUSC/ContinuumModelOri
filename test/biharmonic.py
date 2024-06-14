@@ -2,13 +2,14 @@ from firedrake import *
 from firedrake.output import VTKFile
 
 # Create mesh and define function space
-N = 10
+N = 30
 mesh = UnitSquareMesh(N, N, diagonal='crossed')
 V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
 
 # Define boundary condition
-u1 = Constant((.15, 0, 0))
-u2 = Constant((-.15, 0, 0))
+x = SpatialCoordinate(mesh)
+u1 = Constant((.2, 0, 0)) * (x[1] * (1 - x[1]) * 4)
+u2 = Constant((-.2, 0, 0)) * (x[1] * (1 - x[1]) * 4)
 bcs = [DirichletBC(V, u1, 1), DirichletBC(V, u2, 2)]
 
 # Define trial and test functions
@@ -33,14 +34,14 @@ a = inner(div(grad(u)), div(grad(v)))*dx \
 a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * (ds(1) + ds(2))
 
 # Define linear form
-x = SpatialCoordinate(mesh)
 #f = 4.0*pi**4*sin(pi*x[0])*sin(pi*x[1])
-f = Constant((0, 0, 1e-3))
-L = inner(f, v)*dx
+#f = Constant((0, 0, 1e-3))
+#L = inner(f, v)*dx
 
 #Rhs penalty term
-Gd = Constant((-1, 0, -1))
+Gd = Constant((0, 0, -1))
 L = alpha/h * inner(Gd, dot(grad(v), n)) * (ds(1) + ds(2))
+L -= inner(Gd, div(grad(v))) * (ds(1) + ds(2))
 
 # Solve variational problem
 u = Function(V, name='sol')
