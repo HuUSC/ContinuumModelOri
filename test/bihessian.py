@@ -25,9 +25,9 @@ n = FacetNormal(mesh)
 alpha = Constant(8.0)
 
 # Define bilinear form
-a = inner(div(grad(u)), div(grad(v)))*dx \
-  - inner(avg(div(grad(u))), jump(grad(v), n))*dS \
-  - inner(jump(grad(u), n), avg(div(grad(v))))*dS \
+a = inner(grad(grad(u)), grad(grad(v)))*dx \
+  - inner(dot(avg(grad(grad(u))), n('+')), jump(grad(v)))*dS \
+  - inner(jump(grad(u)), dot(avg(grad(grad(v))), n('+')))*dS \
   + alpha/h_avg*inner(jump(grad(u)), jump(grad(v)))*dS
 
 #Penalty term for the gradient Dirichlet bc
