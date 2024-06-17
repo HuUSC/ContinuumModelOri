@@ -22,7 +22,7 @@ h_avg = (h('+') + h('-'))/2.0
 n = FacetNormal(mesh)
 
 # Penalty parameter
-alpha = Constant(8.0)
+alpha = Constant(10) #8
 
 # Define bilinear form
 a = inner(grad(grad(u)), grad(grad(v)))*dx \
@@ -39,10 +39,14 @@ a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * (ds(1) + ds(2))
 #L = inner(f, v)*dx
 
 #Rhs penalty term
-G2 = Constant((1, 0, -1))
 G1 = Constant((-1, 0, -1))
-L = alpha/h * inner(G1, dot(grad(v), n)) * ds(1) - inner(G1, div(grad(v))) * ds(1)
-L += alpha/h * inner(G2, dot(grad(v), n)) * ds(2) - inner(G2, div(grad(v))) * ds(2)
+G2 = Constant((1, 0, -1))
+L = alpha/h * inner(G1, dot(grad(v), n)) * ds(1) - inner(G1, dot(dot(grad(grad(v)), n), n)) * ds(1)
+L += alpha/h * inner(G2, dot(grad(v), n)) * ds(2) - inner(G2, dot(dot(grad(grad(v)), n), n)) * ds(2)
+
+#Lhs boundary penalty term
+a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds(2) + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds(2)
+a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds(1) + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds(1)
 
 # Solve variational problem
 u = Function(V, name='sol')
