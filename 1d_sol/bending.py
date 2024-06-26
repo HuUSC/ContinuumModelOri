@@ -59,32 +59,32 @@ final = VTKFile('omega_u.pvd')
 final.write(omega_u)
 final = VTKFile('omega_v.pvd')
 final.write(omega_v)
-sys.exit()
 
-
-#Recomputing the rotation
+#Computing the rotation
 W = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))
 PETSc.Sys.Print('Nb tensor dof: %i' % W.dim())
 
 #Dirichlet BC
-x = SpatialCoordinate(mesh)
-Rot = as_tensor(((cos(x[1]), -sin(x[1]), 0), (sin(x[1]), cos(x[1]), 0), (0,0,1)))
-bcs = [DirichletBC(W, Rot, 1), DirichletBC(W, Rot, 2)]
+bcs = [DirichletBC(W, Identity(3), 1)]
+
+#Auxiliary fields
+Omega_u = as_tensor(((0, -omega_u[2], omega_u[1]), (omega_u[2], 0, -omega_u[0]), (-omega_u[1], omega_u[0], 0)))
+Omega_v = as_tensor(((0, -omega_v[2], omega_v[1]), (omega_v[2], 0, -omega_v[0]), (-omega_v[1], omega_v[0], 0)))
 
 #Bilinear form
 S = TrialFunction(W)
 T = TestFunction(W)
-#a = inner(S.dx(0) - dot(S, Omega_0), T.dx(0)) * dx + inner(S.dx(1) - dot(S, Omega_1), T.dx(1)) * dx
-a = inner(S.dx(1) - dot(S, Omega_1), T.dx(1) - dot(T, Omega_1)) * dx + inner(S.dx(0) - dot(S, Omega_0), T.dx(0) - dot(T, Omega_0)) * dx
-l = inner(Constant(((0, 0, 0), (0,0,0), (0,0,0))), T) * dx(mesh)
+a = inner(S.dx(1) - dot(S, Omega_v), T.dx(1) - dot(T, Omega_v)) * dx + inner(S.dx(0) - dot(S, Omega_u), T.dx(0) - dot(T, Omega_u)) * dx
+l = Constant(0) * T[0,0] * dx(mesh)
 
 #Linear solve
 R = Function(W, name='rotation')
 solve(a == l, R, bcs=bcs)
 
 #plotting the result
-final = File('rot.pvd')
+final = VTKFile('rot.pvd')
 final.write(R)
+sys.exit()
 
 #Recomputing the effective deformation
 X = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
