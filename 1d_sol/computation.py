@@ -23,12 +23,10 @@ bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), Dirichl
 #Define trial and test functions
 V = TestFunction(Z)
 w, eta = split(V)
-U = Function(Z)
-y, theta = split(U)
 
 #Define solutions
-#sol = Function(Z, name='sol')
-#y, theta = sol.sub(0), sol.sub(1)
+sol = Function(Z, name='sol')
+y, theta = split(sol)
 
 # elastic parameters
 c_1, c_2, d_1, d_2, d_3 = 1.0, 1.0, 1e-2, 1e-2, 1e-2
@@ -55,7 +53,21 @@ L = dot(grad(y).T, grad(y)) - A_t.T * A_t
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 #Total energy
-Energy = (c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( N, N )) * dx
+W = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( N, N )
+G = diff(W, H)
+Energy = W * dx
 
 # first variation of the energy
-a = derivative(Energy, U, V)
+a = derivative(Energy, sol, V)
+
+# interior penalty
+alpha = Constant(10) # penalty parameter
+h = CellDiameter(mesh) # cell diameter
+n = FacetNormal(mesh) # outward-facing normal vector
+h_avg = avg(h)  # average size of cells sharing a facet
+#a -=  inner( avg( dot( dot( G, n), n) ) , jump( grad(w), n) ) * dS #consistency term
+#What about symmetry  term?
+a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
+a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
+
+solve(a == 0, sol, bcs=bcs)
