@@ -26,7 +26,7 @@ sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 L = 10
 H = 10
 size_ref = 25 #25 #10 #debug
-mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed')
+mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
 V = FunctionSpace(mesh, "CG", 1)
@@ -110,3 +110,8 @@ final = VTKFile('yeff.pvd')
 final.write(aux)
 #final.write(yeff)
 
+# Saving the result
+with CheckpointFile("Ref.h5", 'w') as afile:
+    afile.save_mesh(mesh)
+    afile.save_function(yeff)
+    afile.save_function(theta)
