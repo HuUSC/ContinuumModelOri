@@ -16,10 +16,13 @@ PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 #Load ref computation from a file
 with CheckpointFile("Ref.h5", 'r') as afile:
     meshRef = afile.load_mesh("meshRef")
-    y_ref = afile.load_function(meshRef, "yeff")
-    theta_ref = afile.load_function(meshRef, "theta")
-#ref = Function(Z, name='ref')
-#y_ref, theta_ref = ref.sub(0), ref.sub(1)
+    Y_ref = afile.load_function(meshRef, "yeff")
+    Theta_ref = afile.load_function(meshRef, "theta")
+ref = Function(Z, name='ref')
+#ref.interpolate(as_vector((y_ref[0], y_ref[1], y_ref[2], theta_ref)))
+y_ref, theta_ref = ref.sub(0), ref.sub(1)
+theta_ref.interpolate(Theta_ref)
+y_ref.vector()[:] = project(Y_ref, V).vector()[:]
 
 #Define the boundary conditions
 bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4), DirichletBC(Z.sub(1), theta_ref, 1), DirichletBC(Z.sub(1), theta_ref, 2), DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
