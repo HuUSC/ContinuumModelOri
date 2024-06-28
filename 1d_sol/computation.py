@@ -31,9 +31,16 @@ bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), Dirichl
 V = TestFunction(Z)
 w, eta = split(V)
 
+#Initial guess
+
+
 #Define solutions
 sol = Function(Z, name='sol')
 y, theta = split(sol)
+
+#test
+sol.sub(0).interpolate(y_ref)
+sol.sub(1).interpolate(theta_ref)
 
 # elastic parameters
 c_1, c_2, d_1, d_2, d_3 = 1.0, 1.0, 1e-2, 1e-2, 1e-2
@@ -77,4 +84,4 @@ h_avg = avg(h)  # average size of cells sharing a facet
 a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
-solve(a == 0, sol, bcs=bcs)
+solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 25})
