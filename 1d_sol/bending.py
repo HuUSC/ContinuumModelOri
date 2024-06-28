@@ -12,7 +12,7 @@ c_tau = 0.0
 c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
-#time-step
+#time-stepping
 N = 100
 t = np.linspace(0, 10, N)
 
