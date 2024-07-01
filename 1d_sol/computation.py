@@ -19,7 +19,6 @@ with CheckpointFile("Ref.h5", 'r') as afile:
     Y_ref = afile.load_function(meshRef, "yeff")
     Theta_ref = afile.load_function(meshRef, "theta")
 ref = Function(Z, name='ref')
-#ref.interpolate(as_vector((y_ref[0], y_ref[1], y_ref[2], theta_ref)))
 y_ref, theta_ref = ref.sub(0), ref.sub(1)
 theta_ref.interpolate(Theta_ref)
 y_ref.vector()[:] = project(Y_ref, V).vector()[:]

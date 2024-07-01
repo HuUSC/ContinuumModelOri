@@ -13,7 +13,7 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 100
+N = 1000
 t = np.linspace(0, 10, N)
 
 #Solving the ode to get \theta and \omega
@@ -25,7 +25,7 @@ sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 # Create mesh
 L = 10
 H = 10
-size_ref = 25 #25 #10 #debug
+size_ref = 100 #25 #10 #debug
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -48,9 +48,12 @@ final.write(theta)
 W = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
 PETSc.Sys.Print('Nb vec dof: %i' % W.dim())
 omega_u = Function(W, name='omega_u')
+omega_u.vector()[:,0] = np.interp(coords, t, sol_omega_u[0,:])
 omega_u.vector()[:,1] = np.interp(coords, t, sol_omega_u[1,:])
+omega_u.vector()[:,2] = np.interp(coords, t, sol_omega_u[2,:])
 omega_v = Function(W, name='omega_v')
 omega_v.vector()[:,0] = np.interp(coords, t, sol_omega_v[0,:])
+omega_v.vector()[:,1] = np.interp(coords, t, sol_omega_v[1,:])
 omega_v.vector()[:,2] = np.interp(coords, t, sol_omega_v[2,:])
 
 #plotting the result for omega
@@ -87,8 +90,8 @@ final.write(Reff)
 #Recomputing the effective deformation
 
 # the coefficient functions
-lv = sqrt(3) * cos(0.5*(theta+phi))
-lu = 2 * sqrt ( 2 / (5-3*cos(theta+phi)))
+lu = sqrt(3) * cos(0.5*(theta+phi))
+lv = 2 * sqrt ( 2 / (5-3*cos(theta+phi)))
 
 
 #Bilinear form
