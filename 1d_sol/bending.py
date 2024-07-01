@@ -90,15 +90,17 @@ final.write(Reff)
 #Recomputing the effective deformation
 
 # the coefficient functions
-lu = sqrt(3) * cos(0.5*(theta+phi))
-lv = 2 * sqrt ( 2 / (5-3*cos(theta+phi)))
+u_s = sqrt(3.0) * cos(phi/2)
+v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
+u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
+v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
 
 
 #Bilinear form
 u = TrialFunction(W)
 v = TestFunction(W)
 a = inner(grad(u), grad(v)) * dx
-Aeff = as_tensor(((lu, 0), (0, lv), (0, 0)))
+Aeff = as_tensor(((u_ts/u_s, 0), (0, v_ts/v_s), (0, 0)))
 l = inner(dot(Reff, Aeff), grad(v)) * dx
 
 #Linear solve
