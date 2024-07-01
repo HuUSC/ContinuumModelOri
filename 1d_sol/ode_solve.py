@@ -28,3 +28,4 @@ def bendtwist(vec, phi, c_tau, c_kappa):
     omegav_3 = d_theta * lpv/lu
     return np.array([omegau_1, omegau_2, omegau_3]), np.array([omegav_1, omegav_2, omegav_3])
 
+#One more ode to solve

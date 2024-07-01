@@ -13,7 +13,7 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 1000
+N = 1000 #1000
 t = np.linspace(0, 10, N)
 
 #Solving the ode to get \theta and \omega
@@ -23,9 +23,11 @@ sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 #sys.exit()
 
 # Create mesh
-L = 10
-H = 10
-size_ref = 100 #25 #10 #debug
+lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
+L = 10 #* lv0
+H = 10 * lv0 
+print(L*H)
+size_ref = 100 #100
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -36,7 +38,7 @@ PETSc.Sys.Print('Nb dof: %i' % V.dim())
 theta = Function(V, name='theta')
 coord = Function(V)
 x = SpatialCoordinate(mesh)
-coord.interpolate(x[0])
+coord.interpolate(x[1] / lv0)
 coords = coord.vector().array()
 theta.vector()[:] = np.interp(coords, t, sol_theta[:,0])
 
@@ -67,7 +69,8 @@ Z = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))
 PETSc.Sys.Print('Nb tensor dof: %i' % Z.dim())
 
 #Dirichlet BC
-bcs = [DirichletBC(Z, Identity(3), 1)]
+bcs = [DirichletBC(Z, Identity(3), 1), DirichletBC(Z, ..., 3)]
+#Complete the BC here when done with computing it
 
 #Auxiliary fields
 Omega_u = as_tensor(((0, -omega_u[2], omega_u[1]), (omega_u[2], 0, -omega_u[0]), (-omega_u[1], omega_u[0], 0)))
@@ -82,6 +85,9 @@ l = Constant(0) * T[0,0] * dx(mesh)
 #Linear solve
 Reff = Function(Z, name='rotation')
 solve(a == l, Reff, bcs=bcs)
+#Reff.interpolate(Identity(3))
+print(assemble(inner(Reff.T, Reff) * dx))
+#sys.exit()
 
 #plotting the result
 final = VTKFile('rot.pvd')
