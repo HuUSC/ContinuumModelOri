@@ -66,20 +66,38 @@ final.write(omega_u)
 final = VTKFile('omega_v.pvd')
 final.write(omega_v)
 
-#Solving the ODE to have the BC for the rotation
-#test = ode_rot(3, np.identity(3), omega_u, phi)
-#print(test)
-bc_R = solve_ivp(ode_rot, [0, L/lu0], np.identity(3).flatten(), args=(omega_u, phi))
-print(bc_R)
-sys.exit()
-
 
 #Computing the rotation
 Z = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))
 PETSc.Sys.Print('Nb tensor dof: %i' % Z.dim())
 
+#Solving the ODE to have the BC for the rotation
+#test = ode_rot(3, np.identity(3), omega_u, phi)
+#print(test)
+sol_R = solve_ivp(ode_rot, [0, L/lu0], np.identity(3).flatten(), t_eval=t/lu0, method='BDF', args=(omega_u, phi))
+bc_R = Function(Z, name='BC Rot')
+coord.interpolate(x[0] / lu0)
+coords = coord.vector().array()
+#interpolate each of the coordinates...
+bc_R.vector()[:, 0, 0] = np.interp(coords, sol_R.t, sol_R.y[0,:])
+bc_R.vector()[:, 0, 1] = np.interp(coords, sol_R.t, sol_R.y[1,:])
+bc_R.vector()[:, 0, 2] = np.interp(coords, sol_R.t, sol_R.y[2,:])
+bc_R.vector()[:, 1, 0] = np.interp(coords, sol_R.t, sol_R.y[3,:])
+bc_R.vector()[:, 1, 1] = np.interp(coords, sol_R.t, sol_R.y[4,:])
+bc_R.vector()[:, 1, 2] = np.interp(coords, sol_R.t, sol_R.y[5,:])
+bc_R.vector()[:, 2, 0] = np.interp(coords, sol_R.t, sol_R.y[6,:])
+bc_R.vector()[:, 2, 1] = np.interp(coords, sol_R.t, sol_R.y[7,:])
+bc_R.vector()[:, 2, 2] = np.interp(coords, sol_R.t, sol_R.y[8,:])
+aux = Function(Z)
+aux.interpolate(dot(bc_R.T, bc_R))
+
+#plotting the result
+final = VTKFile('rot_BC.pvd')
+final.write(aux)
+sys.exit()
+
 #Dirichlet BC
-bcs = [DirichletBC(Z, Identity(3), 1), DirichletBC(Z, ..., 3)]
+bcs = [DirichletBC(Z, Identity(3), 1), DirichletBC(Z, bc_R, 3)]
 #Complete the BC here when done with computing it
 
 #Auxiliary fields
