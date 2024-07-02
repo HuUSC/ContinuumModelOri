@@ -3,7 +3,7 @@ from firedrake.petsc import PETSc
 import sys
 sys.path.append('.')
 from ode_solve import *
-from scipy.integrate import odeint
+from scipy.integrate import odeint,solve_ivp
 from firedrake.output import VTKFile
 
 # initial conditions for \theta, \tau and \kappa
@@ -13,8 +13,9 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 1000 #1000
-t = np.linspace(0, 10, N)
+N = 100 #1000
+Tf = 10
+t = np.linspace(0, Tf, N)
 
 #Solving the ode to get \theta and \omega
 sol_theta = odeint(actuation, theta0, t, args=(phi, c_tau, c_kappa))
@@ -23,6 +24,7 @@ sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 #sys.exit()
 
 # Create mesh
+lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 L = 10 #* lv0
 H = 10 * lv0 
@@ -63,6 +65,14 @@ final = VTKFile('omega_u.pvd')
 final.write(omega_u)
 final = VTKFile('omega_v.pvd')
 final.write(omega_v)
+
+#Solving the ODE to have the BC for the rotation
+#test = ode_rot(3, np.identity(3), omega_u, phi)
+#print(test)
+bc_R = solve_ivp(ode_rot, [0, L/lu0], np.identity(3).flatten(), args=(omega_u, phi))
+print(bc_R)
+sys.exit()
+
 
 #Computing the rotation
 Z = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))

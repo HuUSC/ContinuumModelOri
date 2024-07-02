@@ -29,3 +29,11 @@ def bendtwist(vec, phi, c_tau, c_kappa):
     return np.array([omegau_1, omegau_2, omegau_3]), np.array([omegav_1, omegav_2, omegav_3])
 
 #One more ode to solve
+def ode_rot(t, R, omega_u, phi):
+    lu0 = np.sqrt(3) * np.cos((phi) / 2)
+    aux = omega_u.at(t*lu0,0)
+    Omega_u = np.array(((0, -aux[2], aux[1]), (aux[2], 0, -aux[0]), (-aux[1], aux[0], 0)))
+    Rot = R.reshape((3,3))
+    res = np.dot(Rot, Omega_u)
+    return res.flatten()
+    
