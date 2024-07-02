@@ -13,7 +13,7 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 100 #1000
+N = 1000 #1000
 Tf = 10
 t = np.linspace(0, Tf, N)
 
@@ -28,7 +28,6 @@ lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 L = 10 #* lv0
 H = 10 * lv0 
-print(L*H)
 size_ref = 100 #100
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
@@ -88,16 +87,16 @@ bc_R.vector()[:, 1, 2] = np.interp(coords, sol_R.t, sol_R.y[5,:])
 bc_R.vector()[:, 2, 0] = np.interp(coords, sol_R.t, sol_R.y[6,:])
 bc_R.vector()[:, 2, 1] = np.interp(coords, sol_R.t, sol_R.y[7,:])
 bc_R.vector()[:, 2, 2] = np.interp(coords, sol_R.t, sol_R.y[8,:])
-aux = Function(Z)
-aux.interpolate(dot(bc_R.T, bc_R))
 
-#plotting the result
-final = VTKFile('rot_BC.pvd')
-final.write(aux)
-sys.exit()
+##plotting the result
+#aux = Function(Z)
+#aux.interpolate(dot(bc_R.T, bc_R))
+#final = VTKFile('rot_BC.pvd')
+#final.write(aux)
+#sys.exit()
 
 #Dirichlet BC
-bcs = [DirichletBC(Z, Identity(3), 1), DirichletBC(Z, bc_R, 3)]
+bcs = [DirichletBC(Z, Identity(3), 1), DirichletBC(Z, bc_R, 3)]#, DirichletBC(Z, bc_R, 3), DirichletBC(Z, bc_R, 4)]
 #Complete the BC here when done with computing it
 
 #Auxiliary fields
@@ -113,8 +112,7 @@ l = Constant(0) * T[0,0] * dx(mesh)
 #Linear solve
 Reff = Function(Z, name='rotation')
 solve(a == l, Reff, bcs=bcs)
-#Reff.interpolate(Identity(3))
-print(assemble(inner(Reff.T, Reff) * dx))
+Reff.interpolate(Identity(3))
 #sys.exit()
 
 #plotting the result
