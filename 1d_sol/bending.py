@@ -73,7 +73,7 @@ PETSc.Sys.Print('Nb tensor dof: %i' % Z.dim())
 #Solving the ODE to have the BC for the rotation
 sol_d = solve_ivp(ode_rot_d, [0, L], np.identity(3).flatten(), t_eval=t, args=(omega_u, phi)) # L/lu0
 bc_d = Function(Z, name='BC Rot down')
-coord.interpolate(x[0] / lu0)
+coord.interpolate(x[0])# / lu0)
 coords = coord.vector().array()
 #interpolate each of the coordinates...
 bc_d.vector()[:, 0, 0] = np.interp(coords, sol_d.t, sol_d.y[0,:])
@@ -128,12 +128,12 @@ bc_r.vector()[:, 2, 0] = np.interp(coords, sol_r.t, sol_r.y[6,:])
 bc_r.vector()[:, 2, 1] = np.interp(coords, sol_r.t, sol_r.y[7,:])
 bc_r.vector()[:, 2, 2] = np.interp(coords, sol_r.t, sol_r.y[8,:])
 
-##Test
+#Test
 #print(bc_d.at(L,0))
 #print(bc_r.at(L,0))
 #sys.exit()
-#print(bc_r.at(L, H))
-#print(bc_t.at(L, H))
+print(bc_r.at(L, H))
+print(bc_t.at(L, H))
 #sys.exit()
 
 #Dirichlet BC
@@ -159,11 +159,11 @@ solve(a == l, Reff, bcs=bcs)
 final = VTKFile('rot.pvd')
 final.write(Reff)
 
-##Test
-#aux = Function(Z)
-#aux.interpolate(dot(Reff.T, Reff))
-#final = VTKFile('rot_test.pvd')
-#final.write(aux)
+#Test
+aux = Function(Z)
+aux.interpolate(dot(Reff.T, Reff))
+final = VTKFile('rot_test.pvd')
+final.write(aux)
 #sys.exit()
 
 #Recomputing the effective deformation

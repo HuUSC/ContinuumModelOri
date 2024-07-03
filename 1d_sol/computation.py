@@ -111,17 +111,17 @@ h_avg = avg(h)  # average size of cells sharing a facet
 a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
-try:
-    solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10})
-except exceptions.ConvergenceError:
-    #plotting the results
-    aux = Function(V, name='yeff 3d')
-    x = SpatialCoordinate(mesh)
-    aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
-    file = VTKFile('surf_pb.pvd')
-    file.write(aux)
+#try:
+solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10})
+#except exceptions.ConvergenceError:
+#plotting the results
+aux = Function(V, name='yeff 3d')
+x = SpatialCoordinate(mesh)
+aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
+file = VTKFile('surf_pb.pvd')
+file.write(aux)
 
-    aux = Function(W, name='theta')
-    aux.assign(sol.sub(1))
-    file = VTKFile('theta_pb.pvd')
-    file.write(aux)
+aux = Function(W, name='theta')
+aux.assign(sol.sub(1))
+file = VTKFile('theta_pb.pvd')
+file.write(aux)
