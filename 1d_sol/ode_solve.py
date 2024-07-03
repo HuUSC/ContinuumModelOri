@@ -31,7 +31,7 @@ def bendtwist(vec, phi, c_tau, c_kappa):
 #ODE for down BC
 def ode_rot_d(t, R, omega_u, phi):
     lu0 = np.sqrt(3) * np.cos((phi) / 2)
-    aux = omega_u.at(t*lu0,0)
+    aux = omega_u.at(t,0) #t*lu0
     Omega_u = np.array(((0, -aux[2], aux[1]), (aux[2], 0, -aux[0]), (-aux[1], aux[0], 0)))
     Rot = R.reshape((3,3))
     res = np.dot(Rot, Omega_u)
@@ -40,7 +40,7 @@ def ode_rot_d(t, R, omega_u, phi):
 #ODE for top BC
 def ode_rot_t(t, R, omega_u, phi, H):
     lu0 = np.sqrt(3) * np.cos((phi) / 2)
-    aux = omega_u.at(t*lu0, H)
+    aux = omega_u.at(t, H) #t*lu0
     Omega_u = np.array(((0, -aux[2], aux[1]), (aux[2], 0, -aux[0]), (-aux[1], aux[0], 0)))
     Rot = R.reshape((3,3))
     res = np.dot(Rot, Omega_u)
@@ -49,7 +49,7 @@ def ode_rot_t(t, R, omega_u, phi, H):
 #ODE for left BC
 def ode_rot_l(t, R, omega_v, phi):
     lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
-    aux = omega_v.at(0, t*lv0)
+    aux = omega_v.at(0, t) #t*lv0
     Omega_v = np.array(((0, -aux[2], aux[1]), (aux[2], 0, -aux[0]), (-aux[1], aux[0], 0)))
     Rot = R.reshape((3,3))
     res = np.dot(Rot, Omega_v)
@@ -58,7 +58,7 @@ def ode_rot_l(t, R, omega_v, phi):
 #ODE for right BC
 def ode_rot_r(t, R, omega_v, phi, L):
     lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
-    aux = omega_v.at(L, t*lv0)
+    aux = omega_v.at(L, t) #t*lv0
     Omega_v = np.array(((0, -aux[2], aux[1]), (aux[2], 0, -aux[0]), (-aux[1], aux[0], 0)))
     Rot = R.reshape((3,3))
     res = np.dot(Rot, Omega_v)

@@ -11,8 +11,8 @@ lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 
 # Create mesh
-L = 10 * lu0
-H = 10 * lv0 
+L = 10# * lu0
+H = 10# * lv0 
 size_ref = 25 #25 #10 #debug
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed')
 
@@ -88,15 +88,15 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 #Total energy
-dens = c_1 * inner( L, L )# + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( N, N )
+dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( N, N )
 G = diff(dens, H)
 Energy = dens * dx
 
-print(assemble(inner(L, L) * dx))
+#print(assemble(inner(L, L) * dx))
 #H = grad(grad(y))
 #q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 #print(assemble(q**2 * dx))
-sys.exit()
+#sys.exit()
 
 # first variation of the energy
 a = derivative(Energy, sol, test)
@@ -112,7 +112,7 @@ a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
 try:
-    solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 0})
+    solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10})
 except exceptions.ConvergenceError:
     #plotting the results
     aux = Function(V, name='yeff 3d')

@@ -26,8 +26,8 @@ sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 # Create mesh
 lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
-L = 10 * lu0
-H = 10 * lv0 
+L = 10# * lu0
+H = 10# * lv0 
 size_ref = 100 #100
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
@@ -39,7 +39,7 @@ PETSc.Sys.Print('Nb dof: %i' % V.dim())
 theta = Function(V, name='theta')
 coord = Function(V)
 x = SpatialCoordinate(mesh)
-coord.interpolate(x[1] / lv0)
+coord.interpolate(x[1])# / lv0)
 coords = coord.vector().array()
 theta.vector()[:] = np.interp(coords, t, sol_theta[:,0])
 
@@ -71,7 +71,7 @@ Z = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))
 PETSc.Sys.Print('Nb tensor dof: %i' % Z.dim())
 
 #Solving the ODE to have the BC for the rotation
-sol_d = solve_ivp(ode_rot_d, [0, L/lu0], np.identity(3).flatten(), t_eval=t, args=(omega_u, phi)) #method='BDF'
+sol_d = solve_ivp(ode_rot_d, [0, L], np.identity(3).flatten(), t_eval=t, args=(omega_u, phi)) # L/lu0
 bc_d = Function(Z, name='BC Rot down')
 coord.interpolate(x[0] / lu0)
 coords = coord.vector().array()
@@ -86,9 +86,9 @@ bc_d.vector()[:, 2, 0] = np.interp(coords, sol_d.t, sol_d.y[6,:])
 bc_d.vector()[:, 2, 1] = np.interp(coords, sol_d.t, sol_d.y[7,:])
 bc_d.vector()[:, 2, 2] = np.interp(coords, sol_d.t, sol_d.y[8,:])
 
-sol_l = solve_ivp(ode_rot_l, [0, H/lv0], np.identity(3).flatten(), t_eval=t, args=(omega_v, phi)) #method='BDF'
+sol_l = solve_ivp(ode_rot_l, [0, H], np.identity(3).flatten(), t_eval=t, args=(omega_v, phi)) #H/lv0
 bc_l = Function(Z, name='BC Rot left')
-coord.interpolate(x[1] / lv0)
+coord.interpolate(x[1])# / lv0)
 coords = coord.vector().array()
 bc_l.vector()[:, 0, 0] = np.interp(coords, sol_l.t, sol_l.y[0,:])
 bc_l.vector()[:, 0, 1] = np.interp(coords, sol_l.t, sol_l.y[1,:])
@@ -100,9 +100,9 @@ bc_l.vector()[:, 2, 0] = np.interp(coords, sol_l.t, sol_l.y[6,:])
 bc_l.vector()[:, 2, 1] = np.interp(coords, sol_l.t, sol_l.y[7,:])
 bc_l.vector()[:, 2, 2] = np.interp(coords, sol_l.t, sol_l.y[8,:])
 
-sol_t = solve_ivp(ode_rot_t, [0, L/lu0], bc_l.at(0, H).flatten(), t_eval=t, args=(omega_u, phi, H)) #method='BDF'
+sol_t = solve_ivp(ode_rot_t, [0, L], bc_l.at(0, H).flatten(), t_eval=t, args=(omega_u, phi, H)) #L/lu0
 bc_t = Function(Z, name='BC Rot top')
-coord.interpolate(x[0] / lu0)
+coord.interpolate(x[0])# / lu0)
 coords = coord.vector().array()
 bc_t.vector()[:, 0, 0] = np.interp(coords, sol_t.t, sol_t.y[0,:])
 bc_t.vector()[:, 0, 1] = np.interp(coords, sol_t.t, sol_t.y[1,:])
@@ -114,9 +114,9 @@ bc_t.vector()[:, 2, 0] = np.interp(coords, sol_t.t, sol_t.y[6,:])
 bc_t.vector()[:, 2, 1] = np.interp(coords, sol_t.t, sol_t.y[7,:])
 bc_t.vector()[:, 2, 2] = np.interp(coords, sol_t.t, sol_t.y[8,:])
 
-sol_r = solve_ivp(ode_rot_r, [0, H/lv0], bc_d.at(L, 0).flatten(), t_eval=t, args=(omega_v, phi, L)) #method='BDF'
+sol_r = solve_ivp(ode_rot_r, [0, H], bc_d.at(L, 0).flatten(), t_eval=t, args=(omega_v, phi, L)) #H/lv0
 bc_r = Function(Z, name='BC Rot right')
-coord.interpolate(x[1] / lv0)
+coord.interpolate(x[1])# / lv0)
 coords = coord.vector().array()
 bc_r.vector()[:, 0, 0] = np.interp(coords, sol_r.t, sol_r.y[0,:])
 bc_r.vector()[:, 0, 1] = np.interp(coords, sol_r.t, sol_r.y[1,:])
