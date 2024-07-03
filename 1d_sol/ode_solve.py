@@ -22,10 +22,10 @@ def bendtwist(vec, phi, c_tau, c_kappa):
     tau = c_tau / lu**2
     omegau_1 = tau * lu
     omegau_2 = kappa * lu * lpu * lv
-    omegau_3 = -d_theta * lpu / lv #0.0 * lu #correct?
+    omegau_3 = -d_theta * lpu / lv
     omegav_1 = kappa * lpv * lv * lu
-    omegav_2 = - tau * lv
-    omegav_3 = d_theta * lpv/lu
+    omegav_2 = -tau * lv
+    omegav_3 = 0 * lv #d_theta * lpv/lu
     return np.array([omegau_1, omegau_2, omegau_3]), np.array([omegav_1, omegav_2, omegav_3])
 
 #ODE for down BC

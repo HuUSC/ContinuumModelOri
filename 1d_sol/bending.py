@@ -13,7 +13,7 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 100 #1000
+N = 1000 #1000
 Tf = 10
 t = np.linspace(0, Tf, N)
 
@@ -128,13 +128,13 @@ bc_r.vector()[:, 2, 0] = np.interp(coords, sol_r.t, sol_r.y[6,:])
 bc_r.vector()[:, 2, 1] = np.interp(coords, sol_r.t, sol_r.y[7,:])
 bc_r.vector()[:, 2, 2] = np.interp(coords, sol_r.t, sol_r.y[8,:])
 
-#Test
-print(bc_t.at(0,H))
-print(bc_l.at(0,H))
-sys.exit()
-print(bc_r.at(L, H))
-print(bc_t.at(L,H))
-sys.exit()
+##Test
+#print(bc_d.at(L,0))
+#print(bc_r.at(L,0))
+#sys.exit()
+#print(bc_r.at(L, H))
+#print(bc_t.at(L,H))
+#sys.exit()
 
 #plotting the result
 #aux = Function(Z)
