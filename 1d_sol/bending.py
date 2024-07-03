@@ -136,16 +136,8 @@ bc_r.vector()[:, 2, 2] = np.interp(coords, sol_r.t, sol_r.y[8,:])
 #print(bc_t.at(L, H))
 #sys.exit()
 
-#plotting the result
-#aux = Function(Z)
-#aux.interpolate(dot(bc_R.T, bc_R))
-#final = VTKFile('rot_BC.pvd')
-#final.write(bc_l)
-#sys.exit()
-
 #Dirichlet BC
 bcs = [DirichletBC(Z, bc_d, 3), DirichletBC(Z, bc_t, 4), DirichletBC(Z, bc_l, 1), DirichletBC(Z, bc_r, 2)]
-#Complete the BC here when done with computing it
 
 #Auxiliary fields
 Omega_u = as_tensor(((0, -omega_u[2], omega_u[1]), (omega_u[2], 0, -omega_u[0]), (-omega_u[1], omega_u[0], 0)))
@@ -166,6 +158,13 @@ solve(a == l, Reff, bcs=bcs)
 #plotting the result
 final = VTKFile('rot.pvd')
 final.write(Reff)
+
+##Test
+#aux = Function(Z)
+#aux.interpolate(dot(Reff.T, Reff))
+#final = VTKFile('rot_test.pvd')
+#final.write(aux)
+#sys.exit()
 
 #Recomputing the effective deformation
 
