@@ -28,7 +28,7 @@ lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 L = 10# * lu0
 H = 10# * lv0 
-size_ref = 100 #100
+size_ref = 200 #100
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -129,11 +129,8 @@ bc_r.vector()[:, 2, 1] = np.interp(coords, sol_r.t, sol_r.y[7,:])
 bc_r.vector()[:, 2, 2] = np.interp(coords, sol_r.t, sol_r.y[8,:])
 
 #Test
-#print(bc_d.at(L,0))
-#print(bc_r.at(L,0))
-#sys.exit()
-print(bc_r.at(L, H))
-print(bc_t.at(L, H))
+#print(bc_r.at(L, H))
+#print(bc_t.at(L, H))
 #sys.exit()
 
 #Dirichlet BC

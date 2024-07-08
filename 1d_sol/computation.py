@@ -7,14 +7,14 @@ parameters.parameters = {'quadrature_degree': '5'}
 
 # initial conditions for \theta
 phi = np.pi/6
-#Bravais lattice
-lu0 = np.sqrt(3) * np.cos((phi) / 2)
-lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
+##Bravais lattice
+#lu0 = np.sqrt(3) * np.cos((phi) / 2)
+#lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 
 # Create mesh
-L = 10# * lu0
-H = 10# * lv0 
-size_ref = 25 #25 #10 #debug
+L = 10
+H = 10
+size_ref = 80 #25 #10 #debug
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed')
 
 # Define function spaces
@@ -31,7 +31,9 @@ with CheckpointFile("Ref.h5", 'r') as afile:
 ref = Function(Z, name='ref')
 y_ref, theta_ref = ref.sub(0), ref.sub(1)
 theta_ref.interpolate(Theta_ref)
-y_ref.vector()[:] = project(Y_ref, V).vector()[:]
+y_ref.sub(0).interpolate(Y_ref[0])
+y_ref.sub(1).interpolate(Y_ref[1])
+y_ref.sub(2).interpolate(Y_ref[2])
 
 #Initial guess
 #Define the boundary conditions
@@ -95,7 +97,7 @@ a = derivative(energy, theta_ig, zeta)
 
 #Solve
 #bcs = [DirichletBC(W, theta_ref, 1), DirichletBC(W, theta_ref, 2), DirichletBC(W, theta_ref, 3), DirichletBC(W, theta_ref, 4)]
-solve(a == 0, theta_ig, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+solve(a == 0, theta_ig) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
 
 #Output IG in theta
 file = VTKFile("IG_theta.pvd")
@@ -148,6 +150,7 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
+#alpha = Constant(1e2)
 a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
@@ -163,13 +166,13 @@ GG = diff(dens, HH)
 a += alpha / h * inner( dot(grad(y), n), dot(grad(w), n) ) * ds #lhs pen
 a -= alpha / h * inner( dot(grad(y_ref), n), dot(grad(w), n) ) * ds #rhs pen
 a -=  inner( dot(dot(G, n), n), dot(grad(w), n)) * ds #consistency term
-a -= inner( dot(dot(GG, n), n), dot(grad(y), n)) * ds #lhs symmetry term
-a += inner( dot(dot(GG, n), n), dot(grad(y_ref), n)) * ds #rhs symmetry term
+#a -= inner( dot(dot(GG, n), n), dot(grad(y), n)) * ds #lhs symmetry term
+#a += inner( dot(dot(GG, n), n), dot(grad(y_ref), n)) * ds #rhs symmetry term
 
 
-#try:
+#Solve
 solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #, "ksp_type": "cg", 'pc_type': 'hypre'})
-#except exceptions.ConvergenceError:
+
 #plotting the results
 aux = Function(V, name='yeff 3d')
 aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
@@ -180,3 +183,9 @@ aux = Function(W, name='theta')
 aux.assign(sol.sub(1))
 file = VTKFile('theta_comp.pvd')
 file.write(aux)
+
+#Computation of error
+err_y = errornorm(y_ref, sol.sub(0), norm_type='H1')
+PETSc.Sys.Print('Error in y: %.3e' % err_y)
+err_theta = errornorm(theta_ref, sol.sub(1), norm_type='H1')
+PETSc.Sys.Print('Error in theta: %.3e' % err_theta)
