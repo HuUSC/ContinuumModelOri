@@ -32,36 +32,61 @@ y_ref, theta_ref = ref.sub(0), ref.sub(1)
 theta_ref.interpolate(Theta_ref)
 y_ref.vector()[:] = project(Y_ref, V).vector()[:]
 
+#Initial guess
 #Define the boundary conditions
-bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4), DirichletBC(Z.sub(1), theta_ref, 1), DirichletBC(Z.sub(1), theta_ref, 2), DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
+bcs = [DirichletBC(V, y_ref, 1), DirichletBC(V, y_ref, 2), DirichletBC(V, y_ref, 3), DirichletBC(V, y_ref, 4)]
 
+#Interior penalty
+alpha = Constant(10) # penalty parameter
+h = CellDiameter(mesh) # cell diameter
+h_avg = avg(h)  # average size of cells sharing a facet
+n = FacetNormal(mesh) # outward-facing normal vector
+
+#Bilinear form
+u = TrialFunction(V)
+v = TestFunction(V)
+a = inner(grad(grad(u)), grad(grad(v)))*dx \
+  - inner(dot(avg(grad(grad(u))), n('+')), jump(grad(v)))*dS \
+  - inner(jump(grad(u)), dot(avg(grad(grad(v))), n('+')))*dS \
+  + alpha/h_avg*inner(jump(grad(u)), jump(grad(v)))*dS
+
+#Penalty term for the gradient Dirichlet bc
+a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * ds
+
+#Rhs penalty term
+L = alpha/h * inner(dot(grad(y_ref), n), dot(grad(v), n)) * ds - inner(dot(grad(y_ref), n), dot(dot(grad(grad(v)), n), n)) * ds
+
+#Lhs boundary penalty term
+a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds
+
+# Solve variational problem
+sol_ig = Function(V, name='IG')
+solve(a == L, sol_ig, bcs)
+
+# Save solution to file
+file = VTKFile("IG.pvd")
+aux = Function(V, name='IG')
+x = SpatialCoordinate(mesh)
+aux.interpolate(sol_ig - as_vector((x[0], x[1], 0)))
+file.write(aux)
+#sys.exit()
+
+#Nonlinear problem
 #Define trial and test functions
 test = TestFunction(Z)
 w, eta = split(test)
-
-#Initial guess
-
 
 #Define solutions
 sol = Function(Z, name='sol')
 y, theta = split(sol)
 
-#test
-sol.sub(0).interpolate(y_ref)
+#Interpolate initial guess
+sol.sub(0).interpolate(sol_ig)
+#Go get code from Hu for the computation of theta
 sol.sub(1).interpolate(theta_ref)
 
-##Test
-#aux = Function(V, name='yeff 3d')
-#x = SpatialCoordinate(mesh)
-#aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
-#file = VTKFile('surf_pb.pvd')
-#file.write(aux)
-#
-#aux = Function(W, name='theta')
-#aux.assign(sol.sub(1))
-#file = VTKFile('theta_pb.pvd')
-#file.write(aux)
-#sys.exit()
+#Define the boundary conditions
+bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4), DirichletBC(Z.sub(1), theta_ref, 1), DirichletBC(Z.sub(1), theta_ref, 2), DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
 
 # elastic parameters
 c_1, c_2, d_1, d_2, d_3 = 1.0, 1.0, 1e-2, 1e-2, 1e-2
@@ -96,27 +121,23 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
-alpha = Constant(10) # penalty parameter
-h = CellDiameter(mesh) # cell diameter
-n = FacetNormal(mesh) # outward-facing normal vector
-h_avg = avg(h)  # average size of cells sharing a facet
 a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
 #Symmetry term
 HH = variable(grad(grad(w)))
-#q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
-#dens = c_2 * q**2 + d_3 * inner(H, H)
-#GG = diff(dens, H)
-GG = replace(G, {H:HH})
+#GG = replace(G, {H:HH})
+q = v_t_p * v_ts * inner( HH, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( HH,outer(N,v_0,v_0) )
+dens = c_2 * q**2 + d_3 * inner(HH, HH)
+GG = diff(dens, HH)
 #a -=  inner( dot(avg(GG), n('+')), jump(grad(y))) * dS #symmetry term
 
 #Gradient BC
 a += alpha / h * inner( dot(grad(y), n), dot(grad(w), n) ) * ds #lhs pen
 a -= alpha / h * inner( dot(grad(y_ref), n), dot(grad(w), n) ) * ds #rhs pen
 a -=  inner( dot(dot(G, n), n), dot(grad(w), n)) * ds #consistency term
-#a -= inner( dot(dot(GG, n), n), dot(grad(y), n)) * ds #lhs symmetry term
-#a += inner( dot(dot(GG, n), n), dot(grad(y_ref), n)) * ds #rhs symmetry term
+a -= inner( dot(dot(GG, n), n), dot(grad(y), n)) * ds #lhs symmetry term
+a += inner( dot(dot(GG, n), n), dot(grad(y_ref), n)) * ds #rhs symmetry term
 
 
 #try:
@@ -124,7 +145,6 @@ solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_i
 #except exceptions.ConvergenceError:
 #plotting the results
 aux = Function(V, name='yeff 3d')
-x = SpatialCoordinate(mesh)
 aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
 file = VTKFile('surf_comp.pvd')
 file.write(aux)
