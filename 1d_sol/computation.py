@@ -1,6 +1,7 @@
 from firedrake import *
 import sys
 from firedrake.output import *
+from firedrake.petsc import PETSc
 
 parameters.parameters = {'quadrature_degree': '5'}
 
@@ -71,6 +72,39 @@ aux.interpolate(sol_ig - as_vector((x[0], x[1], 0)))
 file.write(aux)
 #sys.exit()
 
+#Compute initial guess for the angle field
+theta_ig = Function(W, name='IG theta')
+# basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+e_1 = Constant((1, 0))
+e_2 = Constant((0, 1))
+phi = pi/6
+u_s = sqrt(3.0) * cos(phi/2)
+v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
+u_0 = u_s * e_1
+v_0 = v_s * e_2
+u_ts = sqrt(3.0) * cos( (theta_ig+phi)/2 )
+v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta_ig+phi) ) )
+A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
+
+#defining the energy to minimize
+L = dot(grad(sol_ig).T, grad(sol_ig)) - dot(A_t.T, A_t)
+c = 1 #coercivity constant
+energy = inner(L, L) * dx + c * inner(grad(theta_ig), grad(theta_ig)) * dx
+zeta = TestFunction(W)
+a = derivative(energy, theta_ig, zeta)
+
+#Solve
+#bcs = [DirichletBC(W, theta_ref, 1), DirichletBC(W, theta_ref, 2), DirichletBC(W, theta_ref, 3), DirichletBC(W, theta_ref, 4)]
+solve(a == 0, theta_ig, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+
+#Output IG in theta
+file = VTKFile("IG_theta.pvd")
+file.write(theta_ig)
+#sys.exit()
+
+PETSc.Sys.Print('Initial guess ok!\n')
+
+
 #Nonlinear problem
 #Define trial and test functions
 test = TestFunction(Z)
@@ -83,7 +117,7 @@ y, theta = split(sol)
 #Interpolate initial guess
 sol.sub(0).interpolate(sol_ig)
 #Go get code from Hu for the computation of theta
-sol.sub(1).interpolate(theta_ref)
+sol.sub(1).interpolate(theta_ig)
 
 #Define the boundary conditions
 bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4), DirichletBC(Z.sub(1), theta_ref, 1), DirichletBC(Z.sub(1), theta_ref, 2), DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
@@ -92,13 +126,6 @@ bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), Dirichl
 c_1, c_2, d_1, d_2, d_3 = 1.0, 1.0, 1e-2, 1e-2, 1e-2
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-e_1 = Constant((1, 0))
-e_2 = Constant((0, 1))
-phi = pi/6
-u_s = sqrt(3.0) * cos(phi/2)
-v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
-u_0 = u_s * e_1
-v_0 = v_s * e_2
 u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
