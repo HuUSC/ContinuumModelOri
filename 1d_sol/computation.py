@@ -88,15 +88,9 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 #Total energy
-dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( N, N )
+dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
 G = diff(dens, H)
 Energy = dens * dx
-
-#print(assemble(inner(L, L) * dx))
-#H = grad(grad(y))
-#q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
-#print(assemble(q**2 * dx))
-#sys.exit()
 
 # first variation of the energy
 a = derivative(Energy, sol, test)
@@ -106,22 +100,36 @@ alpha = Constant(10) # penalty parameter
 h = CellDiameter(mesh) # cell diameter
 n = FacetNormal(mesh) # outward-facing normal vector
 h_avg = avg(h)  # average size of cells sharing a facet
-#a -=  inner( avg( dot( dot( G, n), n) ) , jump( grad(w), n) ) * dS #consistency term
-#What about symmetry  term?
 a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
+#Symmetry term
+HH = variable(grad(grad(w)))
+#q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
+#dens = c_2 * q**2 + d_3 * inner(H, H)
+#GG = diff(dens, H)
+GG = replace(G, {H:HH})
+#a -=  inner( dot(avg(GG), n('+')), jump(grad(y))) * dS #symmetry term
+
+#Gradient BC
+a += alpha / h * inner( dot(grad(y), n), dot(grad(w), n) ) * ds #lhs pen
+a -= alpha / h * inner( dot(grad(y_ref), n), dot(grad(w), n) ) * ds #rhs pen
+a -=  inner( dot(dot(G, n), n), dot(grad(w), n)) * ds #consistency term
+#a -= inner( dot(dot(GG, n), n), dot(grad(y), n)) * ds #lhs symmetry term
+#a += inner( dot(dot(GG, n), n), dot(grad(y_ref), n)) * ds #rhs symmetry term
+
+
 #try:
-solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10})
+solve(a == 0, sol, bcs=bcs, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #, "ksp_type": "cg", 'pc_type': 'hypre'})
 #except exceptions.ConvergenceError:
 #plotting the results
 aux = Function(V, name='yeff 3d')
 x = SpatialCoordinate(mesh)
 aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
-file = VTKFile('surf_pb.pvd')
+file = VTKFile('surf_comp.pvd')
 file.write(aux)
 
 aux = Function(W, name='theta')
 aux.assign(sol.sub(1))
-file = VTKFile('theta_pb.pvd')
+file = VTKFile('theta_comp.pvd')
 file.write(aux)
