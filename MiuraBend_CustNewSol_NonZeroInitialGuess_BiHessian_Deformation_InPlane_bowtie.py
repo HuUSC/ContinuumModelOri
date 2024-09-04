@@ -22,7 +22,7 @@ phi = pi / 6.0
 u_s = sqrt(3.0) * cos(phi / 2.0)
 v_s = 2.0 * sqrt(2.0 / ( 5.0 - 3.0 * cos(phi) ))
 a, b = 1.0, 1.0
-NN = 30
+NN = 40
 domain = mesh.create_rectangle(comm=MPI.COMM_WORLD, points=( (0.0, 0.0), (a, b) ), n=(NN, NN),
                             cell_type=CellType.quadrilateral,
                             ghost_mode=GhostMode.shared_facet)
@@ -204,7 +204,7 @@ bc_whole = dirichletbc(u_whole, dofs_whole, Q2)
 if bool(lr):
     bcs = [bc_CT, bc_CB]
 else:
-    bcs = [bc_CLx, bc_CRx, bc_CLy, bc_CRy, bc_CLz, bc_CRz]
+    bcs = [bc_CL, bc_CR, bc_CLx, bc_CRx, bc_CLz, bc_CRz]
     # bcs = [bc_CL, bc_CR]
 
 # bcs = [bc_T, bc_B, bc_R, bc_L, bc_CR, bc_CL]
@@ -300,7 +300,7 @@ bc_whole_l = dirichletbc(u_whole_l, dofs_whole_l, VL2)
 if bool(lr):
     bcs_l = [bc_CT_l, bc_CB_l]
 else:
-    bcs_l = [bc_CLx_l, bc_CRx_l, bc_CLy_l, bc_CRy_l, bc_CRz_l, bc_CLz_l]
+    bcs_l = [bc_CL_l, bc_CR_l, bc_CLx_l, bc_CRx_l, bc_CRz_l, bc_CLz_l]
     # bcs_l = [bc_CL_l, bc_CR_l]
 
 alpha_l, alpha_d = 20.0, 20.0
