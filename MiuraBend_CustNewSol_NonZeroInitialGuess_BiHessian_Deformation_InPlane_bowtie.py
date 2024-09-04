@@ -57,10 +57,10 @@ def boundary_zero(x):
 #     return np.vstack( ( x[0] + np.ones_like(x[0]) * (0.4), x[1], 0.3*(x[0]-a/2)*(x[1]-b/2) ))
 
 def boundary_CL(x):
-    return np.vstack( ( x[0] + np.ones_like(x[0]) * (0.3), x[1], np.zeros_like(x[0]) ))
+    return np.vstack( ( x[0] + np.ones_like(x[0]) * (0.4), x[1], np.zeros_like(x[0]) ))
 
 def boundary_CR(x):
-    return np.vstack( ( x[0] + np.ones_like(x[0]) * (-0.3), x[1], np.zeros_like(x[0]) ))
+    return np.vstack( ( x[0] + np.ones_like(x[0]) * (-0.4), x[1], np.zeros_like(x[0]) ))
 
 def boundary_CT(x):
     return np.vstack( ( x[0], x[1] + np.ones_like(x[0]) * (0.08), np.zeros_like(x[0]) ))
@@ -69,10 +69,10 @@ def boundary_CB(x):
     return np.vstack( ( x[0], x[1] + np.ones_like(x[0]) * (-0.08), np.zeros_like(x[0]) ))
 
 def boundary_CLx(x):
-    return x[0] + np.ones_like(x[0]) * (-0.1)
+    return x[0] + np.ones_like(x[0]) * (-0.4)
 
 def boundary_CRx(x):
-    return x[0] + np.ones_like(x[0]) * (0.1)
+    return x[0] + np.ones_like(x[0]) * (0.4)
 
 def boundary_CLy(x):
     return x[1]
@@ -110,18 +110,18 @@ lr_d = ''  # empty if gradient Dirichlet boundary conditions are applied on the 
 # ## Form displacement Dirichlet boundary conditions
 fdim = domain.topology.dim - 1
 
-# facets_CL = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], 0), np.isclose( x[1], b/2) ) )
-facets_CL = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.logical_and( x[1] <= b/2 + 1*b/NN, b/2 - 1*b/NN <= x[1] ) ) )
+facets_CL = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], 0), np.isclose( x[1], b/2) ) )
+# facets_CL = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.logical_and( x[1] <= b/2 + 1*b/NN, b/2 - 1*b/NN <= x[1] ) ) )
 # facets_CL = mesh.locate_entities_boundary( domain, 1, lambda x: np.isclose( x[0], 0.0) )
-dofs_CL = locate_dofs_topological((V0, Q), 1, facets_CL)
+dofs_CL = locate_dofs_topological((V0, Q), 0, facets_CL)
 u_CL = Function(Q)
 u_CL.interpolate(boundary_CL)
 bc_CL = dirichletbc(u_CL, dofs_CL, V0)
 
-# facets_CR = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], a), np.isclose( x[1], b/2) ) )
-facets_CR = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], a), np.logical_and( x[1] <= b/2 + 1*b/NN, b/2 - 1*b/NN <= x[1] ) ) )
+facets_CR = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], a), np.isclose( x[1], b/2) ) )
+# facets_CR = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], a), np.logical_and( x[1] <= b/2 + 1*b/NN, b/2 - 1*b/NN <= x[1] ) ) )
 # facets_CR = mesh.locate_entities_boundary( domain, 1, lambda x: np.isclose( x[0], a) )
-dofs_CR = locate_dofs_topological((V0, Q), 1, facets_CR)
+dofs_CR = locate_dofs_topological((V0, Q), 0, facets_CR)
 u_CR = Function(Q)
 u_CR.interpolate(boundary_CR)
 bc_CR = dirichletbc(u_CR, dofs_CR, V0)
@@ -147,18 +147,18 @@ u_C = Function(Q)
 u_C.interpolate(boundary_center)
 bc_C = dirichletbc(u_C, dofs_C, V0)
 
-facets_CLx = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.isclose( x[1], b/2) ) )
-# facets_CLx = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.logical_and( x[1] <= b/2 + b/NN, b/2 - b/NN <= x[1] ) ) )
+# facets_CLx = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.isclose( x[1], b/2) ) )
+facets_CLx = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], 0.0), np.logical_and( x[1] <= b/2 + b/NN, b/2 - b/NN <= x[1] ) ) )
 # facets_CLx = mesh.locate_entities_boundary( domain, 1, lambda x: np.isclose( x[0], 0.0) )
-dofs_CLx = locate_dofs_topological((Q0, Qx), 0, facets_CLx)
+dofs_CLx = locate_dofs_topological((Q0, Qx), 1, facets_CLx)
 u_CLx = Function(Qx)
 u_CLx.interpolate(boundary_CLx)
 bc_CLx = dirichletbc(u_CLx, dofs_CLx, Q0)
 
-facets_CRx = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], a), np.isclose( x[1], b/2) ) )
-# facets_CRx = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], a), np.logical_and( x[1] <= b/2 + b/NN, b/2 - b/NN <= x[1] ) ) )
+# facets_CRx = mesh.locate_entities_boundary( domain, 0, lambda x: np.logical_and( np.isclose( x[0], a), np.isclose( x[1], b/2) ) )
+facets_CRx = mesh.locate_entities_boundary( domain, 1, lambda x: np.logical_and( np.isclose( x[0], a), np.logical_and( x[1] <= b/2 + b/NN, b/2 - b/NN <= x[1] ) ) )
 # facets_CRx = mesh.locate_entities_boundary( domain, 1, lambda x: np.isclose( x[0], a) )
-dofs_CRx = locate_dofs_topological((Q0, Qx), 0, facets_CRx)
+dofs_CRx = locate_dofs_topological((Q0, Qx), 1, facets_CRx)
 u_CRx = Function(Qx)
 u_CRx.interpolate(boundary_CRx)
 bc_CRx = dirichletbc(u_CRx, dofs_CRx, Q0)
@@ -204,8 +204,8 @@ bc_whole = dirichletbc(u_whole, dofs_whole, Q2)
 if bool(lr):
     bcs = [bc_CT, bc_CB]
 else:
-    # bcs = [bc_CLx, bc_CRx, bc_CLy, bc_CRy, bc_CLz, bc_CRz]
-    bcs = [bc_CL, bc_CR]
+    bcs = [bc_CLx, bc_CRx, bc_CLy, bc_CRy, bc_CLz, bc_CRz]
+    # bcs = [bc_CL, bc_CR]
 
 # bcs = [bc_T, bc_B, bc_R, bc_L, bc_CR, bc_CL]
 
@@ -237,12 +237,12 @@ VLz, _ = VL2.collapse()
 ul = TrialFunction(VL)
 wl = TestFunction(VL)
 
-dofs_CR_l = locate_dofs_topological(VL, 1, facets_CR)
+dofs_CR_l = locate_dofs_topological(VL, 0, facets_CR)
 ul_CR = Function(VL)
 ul_CR.interpolate(boundary_CR)
 bc_CR_l = dirichletbc(ul_CR, dofs_CR_l)
 
-dofs_CL_l = locate_dofs_topological(VL, 1, facets_CL)
+dofs_CL_l = locate_dofs_topological(VL, 0, facets_CL)
 ul_CL = Function(VL)
 ul_CL.interpolate(boundary_CL)
 bc_CL_l = dirichletbc(ul_CL, dofs_CL_l)
@@ -262,12 +262,12 @@ ul_C = Function(VL)
 ul_C.interpolate(boundary_center)
 bc_C_l = dirichletbc(ul_C, dofs_C_l)
 
-dofs_CRx_l = locate_dofs_topological((VL0, VLx), 0, facets_CRx)
+dofs_CRx_l = locate_dofs_topological((VL0, VLx), 1, facets_CRx)
 ul_CRx = Function(VLx)
 ul_CRx.interpolate(boundary_CRx)
 bc_CRx_l = dirichletbc(ul_CRx, dofs_CRx_l, VL0)
 
-dofs_CLx_l = locate_dofs_topological((VL0, VLx), 0, facets_CLx)
+dofs_CLx_l = locate_dofs_topological((VL0, VLx), 1, facets_CLx)
 ul_CLx = Function(VLx)
 ul_CLx.interpolate(boundary_CLx)
 bc_CLx_l = dirichletbc(ul_CLx, dofs_CLx_l, VL0)
@@ -300,8 +300,8 @@ bc_whole_l = dirichletbc(u_whole_l, dofs_whole_l, VL2)
 if bool(lr):
     bcs_l = [bc_CT_l, bc_CB_l]
 else:
-    # bcs_l = [bc_CLx_l, bc_CRx_l, bc_CLy_l, bc_CRy_l, bc_CRz_l, bc_CLz_l]
-    bcs_l = [bc_CL_l, bc_CR_l]
+    bcs_l = [bc_CLx_l, bc_CRx_l, bc_CLy_l, bc_CRy_l, bc_CRz_l, bc_CLz_l]
+    # bcs_l = [bc_CL_l, bc_CR_l]
 
 alpha_l, alpha_d = 20.0, 20.0
 
@@ -584,9 +584,9 @@ r_i = Function(V2)
 r_i.interpolate(reference)
 
 
-p = pyvista.Plotter(shape=(1, 2), window_size=[2000, 1200], border=False)
+# p = pyvista.Plotter(shape=(1, 2), window_size=[2000, 1200], border=False)
 # p = pyvista.Plotter(window_size=[700, 300], border=False)
-# p = pyvista.Plotter(window_size=[850, 600], border=False)
+p = pyvista.Plotter(window_size=[1000, 1000], border=False)
 pt = pyvista.Plotter(window_size=[850, 600], border=False)
 actor = p.add_title(
     'Miura', font='courier', color='k', font_size=20 )
@@ -623,33 +623,33 @@ actor = p.add_title(
 # p.show()
 # p.screenshot("Miura_Metric_actuation.png")
 
-p.subplot(0, 0)
+# p.subplot(0, 0)
 topology, cell_types, geometry = plot.vtk_mesh(V2)
 grid = pyvista.UnstructuredGrid(topology, cell_types, geometry)
 grid["u"] = uh_i.x.array.reshape((geometry.shape[0], 3)) - r_i.x.array.reshape((geometry.shape[0], 3))
 actor_0 = p.add_mesh(grid, style="wireframe", color="w")
 warped = grid.warp_by_vector("u", factor=1.0)
 actor_1 = p.add_mesh(warped, show_edges=False, show_scalar_bar=False)
-p.add_scalar_bar('', vertical=False, position_y=0.8)
+p.add_scalar_bar('', vertical=False, position_y=0.05)
 # p.add_text(r"$\mathbf{y}$", font_size=20, position=(250, 400))
 # p.show_grid()
-# p.camera_position = 'xy'
+p.camera_position = 'xy'
 # p.camera.roll += 90
 # p.view_vector([0, 0, 1])
 # p.zoom_camera(1.2)
-p.show_axes()
-# p.save_graphic("Miura_converged_deformation.eps")
-# p.show()
+# p.show_axes()
+p.save_graphic("Miura_converged_bowtie_5.eps")
+p.show()
 
-p.subplot(0, 1)
-topology_h, cell_types_h, geometry_h = plot.vtk_mesh(VT)
-grid_h = pyvista.UnstructuredGrid(topology_h, cell_types_h, geometry_h)
-grid_h.point_data["th"] = theta_h.x.array
-warped_h = grid_h.warp_by_scalar("th", factor=1.0)
-actor_h = p.add_mesh(warped_h, show_edges=False, show_scalar_bar=True, scalars="th")
+# p.subplot(0, 1)
+# topology_h, cell_types_h, geometry_h = plot.vtk_mesh(VT)
+# grid_h = pyvista.UnstructuredGrid(topology_h, cell_types_h, geometry_h)
+# grid_h.point_data["th"] = theta_h.x.array
+# warped_h = grid_h.warp_by_scalar("th", factor=1.0)
+# actor_h = p.add_mesh(warped_h, show_edges=False, show_scalar_bar=True, scalars="th")
 # p.add_scalar_bar('', vertical=True, position_y=0.52)
 # p.add_text(r'$\theta$', font_size=20, position=(200, 450))
 # pt.zoom_camera(1.2)
 # p.show_axes()
 # p.save_graphic("Morph_converged_actuation_cap.eps")
-p.show()
+# p.show()
