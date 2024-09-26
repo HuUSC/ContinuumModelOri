@@ -56,7 +56,7 @@ a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds + inner(dot(grad
 
 # Solve variational problem
 sol_ig = Function(V, name='IG')
-solve(a == L, sol_ig, bcs)
+solve(a == L, sol_ig, bcs, solver_parameters={'quadrature_degree': '2'})
 
 # Save solution to file
 file = VTKFile("IG.pvd")
@@ -89,7 +89,7 @@ a = derivative(energy, theta_ig, zeta)
 
 #Solve
 #bcs = [DirichletBC(W, theta_ref, 1), DirichletBC(W, theta_ref, 2), DirichletBC(W, theta_ref, 3), DirichletBC(W, theta_ref, 4)]
-solve(a == 0, theta_ig) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
 
 #Output IG in theta
 file = VTKFile("IG_theta.pvd")
@@ -131,8 +131,8 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 # elastic parameters
-#c_1, c_2, d_1, d_2, d_3 = 5, .5, 1e-2, 1e-2, 1e-2 #problematic set
-c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2
+c_1, c_2, d_1, d_2, d_3 = 5, .5, 1e-2, 1e-2, 1e-2 #problematic set
+#c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2
 
 #Total energy
 dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
