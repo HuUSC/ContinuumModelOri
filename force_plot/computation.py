@@ -3,11 +3,14 @@ import sys
 from firedrake.output import *
 from firedrake.petsc import PETSc
 
+#parameters.parameters = {'quadrature_degree': '2'}
+
+# initial conditions for \theta
+phi = pi/2
+
 # Create mesh
-L = 10
-H = 10
-size_ref = 20 #80 computation #10 #debug
-mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed')
+N = 20 #80 computation #10 #debug
+mesh = UnitSquareMesh(N, N, diagonal='crossed')
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
@@ -15,21 +18,19 @@ W = FunctionSpace(mesh, "CG", 1)
 Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
-#Load ref computation from a file
-with CheckpointFile("Ref.h5", 'r') as afile:
-    meshRef = afile.load_mesh("meshRef")
-    Y_ref = afile.load_function(meshRef, "yeff")
-    Theta_ref = afile.load_function(meshRef, "theta")
-ref = Function(Z, name='ref')
-y_ref, theta_ref = ref.sub(0), ref.sub(1)
-theta_ref.interpolate(Theta_ref)
-y_ref.sub(0).interpolate(Y_ref[0])
-y_ref.sub(1).interpolate(Y_ref[1])
-y_ref.sub(2).interpolate(Y_ref[2])
-
-#Initial guess
 #Define the boundary conditions
-bcs = [DirichletBC(V, y_ref, 1), DirichletBC(V, y_ref, 2), DirichletBC(V, y_ref, 3), DirichletBC(V, y_ref, 4)]
+val = .3
+x = SpatialCoordinate(mesh)
+#BC
+boundary_CL = as_vector((x[0] + val, x[1], 0))
+boundary_CR = as_vector((x[0] - val, x[1], 0))
+bcs = [DirichletBC(V, boundary_CL, 1), DirichletBC(V, boundary_CR, 2)]
+#Grad BC
+#def GR_b(x):
+#    return np.vstack( ( np.ones_like(x[0])*( cos(pi/4) ), np.zeros_like(x[0]) ) )
+#
+#def GL_b(x):
+#    return np.vstack( ( np.ones_like(x[0])*( -cos(pi/4) ), np.zeros_like(x[0]) ) )
 
 #Interior penalty
 alpha = Constant(1e2) #1e2 #10 #penalty parameter
@@ -37,6 +38,7 @@ h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
 
+#Initial guess
 #Bilinear form
 u = TrialFunction(V)
 v = TestFunction(V)
@@ -45,18 +47,22 @@ a = inner(grad(grad(u)), grad(grad(v)))*dx \
   - inner(jump(grad(u)), dot(avg(grad(grad(v))), n('+')))*dS \
   + alpha/h_avg*inner(jump(grad(u)), jump(grad(v)))*dS
 
-#Penalty term for the gradient Dirichlet bc
-a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * ds
+#Linear form
+L = Constant(0) * v[0] * dx
 
-#Rhs boundary penalty term
-L = alpha/h * inner(dot(grad(y_ref), n), dot(grad(v), n)) * ds - inner(dot(grad(y_ref), n), dot(dot(grad(grad(v)), n), n)) * ds
-
-#Lhs boundary penalty term
-a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds
+##Penalty term for the gradient Dirichlet bc
+#a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * ds
+#
+##Rhs boundary penalty term
+#L = alpha/h * inner(dot(grad(y_ref), n), dot(grad(v), n)) * ds - inner(dot(grad(y_ref), n), dot(dot(grad(grad(v)), n), n)) * ds
+#
+##Lhs boundary penalty term
+#a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds
 
 # Solve variational problem
 sol_ig = Function(V, name='IG')
-solve(a == L, sol_ig, bcs)
+nullspace = VectorSpaceBasis(constant=True)
+solve(a == L, sol_ig, bcs, nullspace=nullspace)
 
 # Save solution to file
 file = VTKFile("IG.pvd")
@@ -64,14 +70,14 @@ aux = Function(V, name='IG')
 x = SpatialCoordinate(mesh)
 aux.interpolate(sol_ig - as_vector((x[0], x[1], 0)))
 file.write(aux)
-#sys.exit()
+sys.exit()
 
 #Compute initial guess for the angle field
 theta_ig = Function(W, name='IG theta')
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
 e_1 = Constant((1, 0))
 e_2 = Constant((0, 1))
-phi = pi/6
+phi = pi/2
 u_s = sqrt(3.0) * cos(phi/2)
 v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
 u_0 = u_s * e_1

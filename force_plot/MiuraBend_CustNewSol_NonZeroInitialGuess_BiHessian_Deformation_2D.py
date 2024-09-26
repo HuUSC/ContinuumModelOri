@@ -11,8 +11,8 @@ from dolfinx.fem import FunctionSpace, dirichletbc, locate_dofs_topological, fun
 from mpi4py import MPI
 from petsc4py import PETSc
 from dolfinx.mesh import CellType, GhostMode
-from ufl import (CellDiameter, FacetNormal, avg, dS, dx, grad, inner,
-                 jump, pi, sin, cos, as_vector, as_matrix, action)
+#from ufl import (CellDiameter, FacetNormal, avg, dS, dx, grad, inner,
+#                 jump, pi, sin, cos, as_vector, as_matrix, action)
 import dolfinx.fem.petsc
 import vtk
 vtk_mathtext = vtk.vtkMathTextFreeTypeTextRenderer()
@@ -24,7 +24,7 @@ v_s = 2.0 * sqrt(2.0 / ( 5.0 - 3.0 * cos(phi) ))
 # u_s = ( 1 + sqrt(3) )/2 * sqrt(3/2)
 # v_s = 2 * sqrt( 2/( 5 - 3*sqrt(3)/2 ) )
 a, b = 1.0, 1.0
-NN = 30
+NN = 10 #30
 domain = mesh.create_rectangle(comm=MPI.COMM_WORLD, points=( (0.0, 0.0), (a, b) ), n=(NN, NN),
                             cell_type=CellType.quadrilateral,
                             ghost_mode=GhostMode.shared_facet)
@@ -47,20 +47,13 @@ R, R_map = V1.collapse()
 def boundary_zero(x):
     return np.vstack( ( np.zeros_like(x[0]), np.zeros_like(x[0]) ))
 
-# def boundary_CL(x):
-#     return np.vstack( ( x[0] + np.ones_like(x[0]) * (-0.2), x[1], 0.25*np.sin( pi/b * (x[1]-b/2) ) ) )
-
-# def boundary_CL(x):
-#     return np.vstack( ( x[0] + np.ones_like(x[0]) * (-0.4), x[1], 0.3*(x[0]-a/2)*(x[1]-b/2) ) )
-#
-# def boundary_CR(x):
-#     return np.vstack( ( x[0] + np.ones_like(x[0]) * (0.4), x[1], 0.3*(x[0]-a/2)*(x[1]-b/2) ))
+val = .3
 
 def boundary_CL(x):
-    return np.vstack( ( x[0] + np.ones_like(x[0]) * (0.4), x[1] ))
+    return np.vstack( ( x[0] + np.ones_like(x[0]) * val, x[1] ))
 
 def boundary_CR(x):
-    return np.vstack( ( x[0] + np.ones_like(x[0]) * (-0.4), x[1] ))
+    return np.vstack( ( x[0] + np.ones_like(x[0]) * (-val), x[1] ))
 
 def boundary_CT(x):
     return np.vstack( ( x[0], x[1] + np.ones_like(x[0]) * (0.08) ))
@@ -393,7 +386,7 @@ while i < max_iterations:
     # Compute norm of update
     correction_norm_t = du.vector.norm(0)
     # print(f"Iteration {i}: Correction norm {correction_norm_t}")
-    if correction_norm_t < 1e-10:
+    if correction_norm_t < 1e-5: #1e-10:
         break
 
 
@@ -439,8 +432,8 @@ H = diff( W, G ) # third-order stress tensor
 Ee = W * dx
 
 # interior penalty terms
-alpha = default_scalar_type(0.1) # penalty parameter
-IPT = 1.0/2.0 * alpha / h_avg * inner( jump( F, n_F ), jump( F, n_F ) ) \
+alpha = default_scalar_type(2e-1) #.1 # penalty parameter
+IPT = .5 * alpha / h_avg * inner( jump( F, n_F ), jump( F, n_F ) ) \
         - inner( avg( dot( dot( H, n_F), n_F) ) , jump( F, n_F) )
 
 
@@ -535,24 +528,24 @@ while i < max_iterations:
     if correction_norm < 1e-10:
         break
 
-# # Convergence rate
-# fig = plt.figure(figsize=(15, 8))
-fig = plt.figure()
-plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.sans-serif": "Times",
-})
-plt.plot(np.arange(i), np.log10(dU_norm))
-ax = plt.gca()
-# ax.set_yscale('log')
-ax.set_xlabel(r"Iteration", fontsize=13)
-ax.set_ylabel(r"Residual norm in log scale", fontsize=13)
-ax.set_xticks(np.arange(0, i, step=1))
-# ax.set_title(r"Residual")
-plt.grid(linestyle='--')
-# plt.savefig("Newton_Convergence.eps", dpi=300.0)
-plt.show()
+## # Convergence rate
+## fig = plt.figure(figsize=(15, 8))
+#fig = plt.figure()
+#plt.rcParams.update({
+#    "text.usetex": True,
+#    "font.family": "serif",
+#    "font.sans-serif": "Times",
+#})
+#plt.plot(np.arange(i), np.log10(dU_norm))
+#ax = plt.gca()
+## ax.set_yscale('log')
+#ax.set_xlabel(r"Iteration", fontsize=13)
+#ax.set_ylabel(r"Residual norm in log scale", fontsize=13)
+#ax.set_xticks(np.arange(0, i, step=1))
+## ax.set_title(r"Residual")
+#plt.grid(linestyle='--')
+## plt.savefig("Newton_Convergence.eps", dpi=300.0)
+#plt.show()
 
 # split the solution
 uh, theta_h = U.sub(0).collapse(), U.sub(1).collapse()
