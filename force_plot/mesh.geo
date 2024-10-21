@@ -1,5 +1,5 @@
 L = 1;
-h = .01; // mesh size
+h = .02; // mesh size
 l = .1; //to impose bc
 
 Point(1) = {0, 0, 0, h};

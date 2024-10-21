@@ -9,7 +9,7 @@ from firedrake.petsc import PETSc
 mesh = Mesh('mesh.msh')
 
 # Define function spaces
-V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
+V = VectorFunctionSpace(mesh, "CG", 2)
 W = FunctionSpace(mesh, "CG", 1)
 Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
@@ -18,12 +18,12 @@ PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 val = .3 #1e-5 #.1 #.3
 x = SpatialCoordinate(mesh)
 #BC
-boundary_CL = as_vector((x[0] + val, x[1], 0))
-boundary_CR = as_vector((x[0] - val, x[1], 0))
+boundary_CL = as_vector((x[0] + val, x[1]))
+boundary_CR = as_vector((x[0] - val, x[1]))
 bcs = [DirichletBC(V, boundary_CL, 1), DirichletBC(V, boundary_CR, 2)]
 
 #Interior penalty
-alpha = Constant(5e-2) #1e2 #10 #penalty parameter
+alpha = Constant(1e-1) #1e2 #10 #penalty parameter
 h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
@@ -49,13 +49,16 @@ L = Constant(0) * v[0] * dx
 # Solve variational problem
 sol_ig = Function(V, name='IG')
 v_basis = VectorSpaceBasis(constant=True)
-solve(a == L, sol_ig, bcs, nullspace=v_basis, solver_parameters={'quadrature_degree': '2'})
+solve(a == L, sol_ig, bcs, nullspace=v_basis, solver_parameters={'quadrature_degree': '3'})
+
+#test
+sol_ig.interpolate(as_vector(((1-2*val)*x[0] + val, x[1])))
 
 # Save solution to file
 file = VTKFile("IG.pvd")
 aux = Function(V, name='IG')
 x = SpatialCoordinate(mesh)
-aux.interpolate(sol_ig - as_vector((x[0], x[1], 0)))
+aux.interpolate(sol_ig - as_vector((x[0], x[1])))
 file.write(aux)
 #sys.exit()
 
@@ -75,7 +78,10 @@ A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
 
 # elastic parameters
 #c_1, c_2, d_1, d_2, d_3 = 5, .5, 1e-2, 1e-2, 1e-2 
-c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2 #problematic set
+#c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2 #old problematic set
+c_1 = 1 #metric constraint
+d_1 = .1
+d_2, d_3 = 1e-2, 1e-2
 
 #defining the energy to minimize
 L = dot(grad(sol_ig).T, grad(sol_ig)) - dot(A_t.T, A_t)
@@ -122,13 +128,13 @@ H = variable(grad(grad(y)))
 N = cross(y.dx(0), y.dx(1))
 N /= sqrt(inner(N, N))
 L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
-q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
+#q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 #Test
 en = assemble(c_1 * inner(L, L) * dx)
 print(en)
-en = assemble(c_2 * q**2 * dx)
-print(en)
+#en = assemble(c_2 * q**2 * dx)
+#print(en)
 en = assemble(d_1 * theta**2 * dx)
 print(en)
 en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
@@ -166,8 +172,8 @@ try:
 except ConvergenceError: #firedrake.exceptions.ConvergenceError:
     en = assemble(c_1 * inner(L, L) * dx)
     print(en)
-    en = assemble(c_2 * q**2 * dx)
-    print(en)
+#    en = assemble(c_2 * q**2 * dx)
+#    print(en)
     en = assemble(d_1 * theta**2 * dx)
     print(en)
     en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
@@ -178,7 +184,7 @@ except ConvergenceError: #firedrake.exceptions.ConvergenceError:
 
 #plotting the results
 aux = Function(V, name='yeff 3d')
-aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
+aux.interpolate(sol.sub(0)-as_vector((x[0], x[1])))
 file = VTKFile('surf_comp.pvd')
 file.write(aux)
 

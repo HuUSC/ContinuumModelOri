@@ -628,18 +628,18 @@ p.camera_position = 'xy'
 p.show()
 # p.screenshot("Miura_bowtie_d1_02_d2_01.png")
 
-# p.subplot(0, 1)
-# topology_h, cell_types_h, geometry_h = plot.vtk_mesh(VT)
-# grid_h = pyvista.UnstructuredGrid(topology_h, cell_types_h, geometry_h)
-# grid_h.point_data["th"] = theta_h.x.array
-# warped_h = grid_h.warp_by_scalar("th", factor=1.0)
-# actor_h = p.add_mesh(warped_h, show_edges=False, show_scalar_bar=True, scalars="th")
-# p.add_scalar_bar('', vertical=True, position_y=0.52)
-# p.add_text(r'$\theta$', font_size=20, position=(200, 450))
-# pt.zoom_camera(1.2)
-# p.show_axes()
-# p.save_graphic("Morph_converged_actuation_cap.eps")
-# p.show()
+#p.subplot(0, 1)
+#topology_h, cell_types_h, geometry_h = plot.vtk_mesh(VT)
+#grid_h = pyvista.UnstructuredGrid(topology_h, cell_types_h, geometry_h)
+#grid_h.point_data["th"] = theta_h.x.array
+#warped_h = grid_h.warp_by_scalar("th", factor=1.0)
+#actor_h = p.add_mesh(warped_h, show_edges=False, show_scalar_bar=True, scalars="th")
+#p.add_scalar_bar('', vertical=True, position_y=0.52)
+#p.add_text(r'$\theta$', font_size=20, position=(200, 450))
+#pt.zoom_camera(1.2)
+#p.show_axes()
+#p.save_graphic("Morph_converged_actuation_cap.eps")
+#p.show()
 
 # using the work of internal forces
 

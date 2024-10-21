@@ -131,8 +131,8 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 # elastic parameters
-c_1, c_2, d_1, d_2, d_3 = 5, .5, 1e-2, 1e-2, 1e-2 #problematic set
-#c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2
+#c_1, c_2, d_1, d_2, d_3 = 5, .5, 1e-2, 1e-2, 1e-2 
+c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 0.1, 0.1, 1e-2 ##problematic set
 
 #Total energy
 dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
@@ -144,17 +144,10 @@ a = derivative(Energy, sol, test)
 
 # interior penalty
 #a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
-en_pen = .5 * inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
+en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
 a -= derivative(en_pen, y, w)
-a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
-
-#Symmetry term
-HH = variable(grad(grad(w)))
-#GG = replace(G, {H:HH})
-q = v_t_p * v_ts * inner( HH, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( HH,outer(N,v_0,v_0) )
-dens = c_2 * q**2 + d_3 * inner(HH, HH)
-GG = diff(dens, HH)
-#a -=  inner( dot(avg(GG), n('+')), jump(grad(y))) * dS #symmetry term
+#a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
+a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
 
 #Gradient BC
 a += alpha / h * inner( dot(grad(y), n), dot(grad(w), n) ) * ds #lhs pen
