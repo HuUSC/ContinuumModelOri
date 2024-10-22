@@ -15,7 +15,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val = .3 #1e-5 #.1 #.3
+val = .3
 x = SpatialCoordinate(mesh)
 #BC
 boundary_CL = as_vector((x[0] + val, x[1]))
@@ -49,7 +49,7 @@ L = Constant(0) * v[0] * dx
 # Solve variational problem
 sol_ig = Function(V, name='IG')
 v_basis = VectorSpaceBasis(constant=True)
-solve(a == L, sol_ig, bcs, nullspace=v_basis, solver_parameters={'quadrature_degree': '3'})
+#solve(a == L, sol_ig, bcs, nullspace=v_basis, solver_parameters={'quadrature_degree': '3'})
 
 #test
 sol_ig.interpolate(as_vector(((1-2*val)*x[0] + val, x[1])))
@@ -192,3 +192,17 @@ aux = Function(W, name='theta')
 aux.assign(sol.sub(1))
 file = VTKFile('theta_comp.pvd')
 file.write(aux)
+
+#Computing reaction forces
+v_reac = Function(Z)
+bc_l = DirichletBC(V.sub(0), Constant(1), 1)
+bc_l.apply(v_reac.sub(0))
+res_l = assemble(action(a, v_reac))
+#print('Reaction on the left: %.3e' % assemble(res))
+#sys.exit()
+v_reac.sub(0).interpolate(Constant((0, 0)))
+bc_r = DirichletBC(V.sub(0), Constant(1), 2)
+bc_r.apply(v_reac.sub(0))
+res_r = assemble(action(a, v_reac))
+#print('Reaction on the right: %.3e' % assemble(res))
+PETSc.Sys.Print('Total force: %.3e' % (abs(res_l)+abs(res_r)))
