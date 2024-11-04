@@ -4,9 +4,9 @@ from firedrake.output import *
 from firedrake.petsc import PETSc
 
 # Create mesh
-#N = 20 #80 computation #10 #debug
-#mesh = UnitSquareMesh(N, N, diagonal='crossed')
-mesh = Mesh('mesh.msh')
+N = 20 #80 computation #10 #debug
+mesh = UnitSquareMesh(N, N, diagonal='crossed')
+#mesh = Mesh('mesh.msh')
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -15,7 +15,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val = .3
+val = 0
 x = SpatialCoordinate(mesh)
 #BC
 boundary_CL = as_vector((x[0] + val, x[1]))
@@ -23,7 +23,7 @@ boundary_CR = as_vector((x[0] - val, x[1]))
 bcs = [DirichletBC(V, boundary_CL, 1), DirichletBC(V, boundary_CR, 2)]
 
 #Interior penalty
-alpha = Constant(1e-1) #1e2 #10 #penalty parameter
+alpha = Constant(1e-1) #1e-1 #penalty parameter
 h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
@@ -54,13 +54,13 @@ v_basis = VectorSpaceBasis(constant=True)
 #test
 sol_ig.interpolate(as_vector(((1-2*val)*x[0] + val, x[1])))
 
-# Save solution to file
-file = VTKFile("IG.pvd")
-aux = Function(V, name='IG')
-x = SpatialCoordinate(mesh)
-aux.interpolate(sol_ig - as_vector((x[0], x[1])))
-file.write(aux)
-#sys.exit()
+##Save solution to file
+#file = VTKFile("IG.pvd")
+#aux = Function(V, name='IG')
+#x = SpatialCoordinate(mesh)
+#aux.interpolate(sol_ig - as_vector((x[0], x[1])))
+#file.write(aux)
+##sys.exit()
 
 #Compute initial guess for the angle field
 theta_ig = Function(W, name='IG theta')
@@ -90,11 +90,11 @@ zeta = TestFunction(W)
 a = derivative(energy, theta_ig, zeta)
 
 #Solve
-solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #'snes_monitor': None, 'snes_max_it': 10})
+#solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #'snes_monitor': None, 'snes_max_it': 10})
 
-#Output IG in theta
-file = VTKFile("IG_theta.pvd")
-file.write(theta_ig)
+##Output IG in theta
+#file = VTKFile("IG_theta.pvd")
+#file.write(theta_ig)
 
 PETSc.Sys.Print('Initial guess ok!\n')
 
@@ -130,18 +130,6 @@ N /= sqrt(inner(N, N))
 L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 #q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
-#Test
-en = assemble(c_1 * inner(L, L) * dx)
-print(en)
-#en = assemble(c_2 * q**2 * dx)
-#print(en)
-en = assemble(d_1 * theta**2 * dx)
-print(en)
-en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
-print(en)
-en = assemble( d_3 * inner(H, H) * dx)
-print(en)
-
 #Total energy
 #c_2 = 0 #test
 #dens = c_1 * inner(L, L) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner(grad(theta), grad(theta)) + d_3 * inner(H, H)
@@ -153,37 +141,27 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
-#a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
 a -= derivative(en_pen, y, w)
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
 #Gradient BC
-a += alpha / h * inner(dot(grad(y), n), dot(grad(w), n)) * (ds(1) + ds(2)) #lhs pen
+#a += alpha / h * inner(dot(grad(y), n), dot(grad(w), n)) * (ds(1) + ds(2)) #lhs pen
 en_pen = inner(dot(dot(G, n), n), dot(grad(y), n)) * (ds(1) + ds(2)) # consistency and symmetry energy term
-a -= derivative(en_pen, y, w)
+#a -= derivative(en_pen, y, w)
 
 #Solve
 #parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4'}#, "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 nullspace = MixedVectorSpaceBasis(Z, [v_basis, Z.sub(1)])
-try:
-    solve(a == 0, sol, bcs=bcs, nullspace=nullspace, solver_parameters=parameters)
-except ConvergenceError: #firedrake.exceptions.ConvergenceError:
-    en = assemble(c_1 * inner(L, L) * dx)
-    print(en)
-#    en = assemble(c_2 * q**2 * dx)
-#    print(en)
-    en = assemble(d_1 * theta**2 * dx)
-    print(en)
-    en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
-    print(en)
-    en = assemble( d_3 * inner(H, H) * dx)
-    print(en)
-    sys.exit()
+#try:
+solve(a == 0, sol, bcs=bcs, nullspace=nullspace, solver_parameters=parameters)
+#except ConvergenceError: #firedrake.exceptions.ConvergenceError:
+
 
 #plotting the results
-aux = Function(V, name='yeff 3d')
+VV = VectorFunctionSpace(mesh, "CG", 1)
+aux = Function(VV, name='yeff 3d')
 aux.interpolate(sol.sub(0)-as_vector((x[0], x[1])))
 file = VTKFile('surf_comp.pvd')
 file.write(aux)
@@ -205,4 +183,14 @@ bc_r = DirichletBC(V.sub(0), Constant(1), 2)
 bc_r.apply(v_reac.sub(0))
 res_r = assemble(action(a, v_reac))
 #print('Reaction on the right: %.3e' % assemble(res))
+PETSc.Sys.Print('Disp: %.3e' % val)
 PETSc.Sys.Print('Total force: %.3e' % (abs(res_l)+abs(res_r)))
+
+#en = assemble(c_1 * inner(L, L) * dx)
+#print(en)
+#en = assemble(d_1 * theta**2 * dx)
+#print(en)
+#en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
+#print(en)
+#en = assemble( d_3 * inner(H, H) * dx)
+#print(en)
