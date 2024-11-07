@@ -8,7 +8,7 @@ V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
 
 # Define boundary condition
 x = SpatialCoordinate(mesh)
-u1 = as_vector((x[0] + .2, x[1], 0)) #(x[1] * (1 - x[1]) * 4)
+u1 = as_vector((x[0] + .2, x[1], 0))
 u2 = as_vector((x[0] - .2, x[1], 0))
 bcs = [DirichletBC(V, u1, 1), DirichletBC(V, u2, 2)]
 
@@ -32,11 +32,6 @@ a = inner(grad(grad(u)), grad(grad(v)))*dx \
 
 #Penalty term for the gradient Dirichlet bc
 a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * (ds(1) + ds(2))
-
-# Define linear form
-#f = 4.0*pi**4*sin(pi*x[0])*sin(pi*x[1])
-#f = Constant((0, 0, 1e-3))
-#L = inner(f, v)*dx
 
 #Rhs penalty term
 G1 = Constant((-1, 0, -1))

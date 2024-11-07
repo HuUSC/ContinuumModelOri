@@ -15,7 +15,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val = 47e-2
+val = 0.2
 x = SpatialCoordinate(mesh)
 #BC
 bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
@@ -91,7 +91,7 @@ zeta = TestFunction(W)
 a = derivative(energy, theta_ig, zeta)
 
 #Solve
-solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #'snes_monitor': None, 'snes_max_it': 10})
+#solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #'snes_monitor': None, 'snes_max_it': 10})
 
 ##Output IG in theta
 #file = VTKFile("IG_theta.pvd")
@@ -115,7 +115,7 @@ sol.sub(0).interpolate(sol_ig)
 sol.sub(1).interpolate(theta_ig)
 
 #Define the boundary conditions
-bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
+bcs = [DirichletBC(Z.sub(0).sub(0), bnd[0], 1), DirichletBC(Z.sub(0).sub(0), bnd[0], 2)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
