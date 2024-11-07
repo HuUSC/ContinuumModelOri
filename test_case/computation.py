@@ -60,7 +60,7 @@ aux = Function(WW, name='IG')
 x = SpatialCoordinate(mesh)
 aux.interpolate(sol_ig - as_vector((x[0], x[1], 0)))
 file.write(aux)
-sys.exit()
+#sys.exit()
 
 #Compute initial guess for the angle field
 theta_ig = Function(W, name='IG theta')
@@ -127,7 +127,7 @@ q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer
 
 # elastic parameters
 #c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2
-c_1, c_2, d_1, d_2, d_3 = 1, 1, 1e-2, 1e-1, 1e-2
+c_1, c_2, d_1, d_2, d_3 = 1, 0, 1e-2, 1e-1, 1e-2
 
 
 #Total energy
@@ -152,7 +152,7 @@ a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
 #a += inner(G1, dot(dot(grad(grad(w)), n), n)) * ds(1) + inner(G2, dot(dot(grad(grad(w)), n), n)) * ds(2) #sym term
 
 #Solve
-parameters = {'snes_monitor': None, 'snes_max_it': 10, 'quadrature_degree': '4', 'rtol': 1e-5, 'ksp_type': 'preonly', 'pc_type': 'lu'}
+parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-5, 'ksp_type': 'preonly', 'pc_type': 'lu'}
 solve(a == 0, sol, bcs=bcs, solver_parameters=parameters)
 
 
