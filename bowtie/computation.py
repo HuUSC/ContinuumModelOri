@@ -4,9 +4,7 @@ from firedrake.output import *
 from firedrake.petsc import PETSc
 
 # Create mesh
-N = 40 #80 computation #10 #debug
-mesh = UnitSquareMesh(N, N, diagonal='crossed')
-#mesh = Mesh('mesh.msh')
+mesh = Mesh('mesh.msh')
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -15,7 +13,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val = 47e-2
+val = 0.41 #25e-2 #1e-1 #47e-1
 x = SpatialCoordinate(mesh)
 #BC
 bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
@@ -34,71 +32,10 @@ h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
 
-##Initial guess
-##Bilinear form
-u = TrialFunction(V)
-v = TestFunction(V)
-#a = inner(grad(grad(u)), grad(grad(v)))*dx \
-#  - inner(dot(avg(grad(grad(u))), n('+')), jump(grad(v)))*dS \
-#  - inner(jump(grad(u)), dot(avg(grad(grad(v))), n('+')))*dS \
-#  + alpha/h_avg*inner(jump(grad(u)), jump(grad(v)))*dS
-#
-##Penalty term for the gradient Dirichlet bc
-#a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * (ds(1) + ds(2))
-#
-##Lhs boundary penalty term
-#a -= inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * (ds(1) + ds(2)) + inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * (ds(1) + ds(2))
-#
-##Linear form
-#L = Constant(0) * v[0] * dx
-#
-## Solve variational problem
-#sol_ig = Function(V, name='IG')
-##v_basis = VectorSpaceBasis(constant=True)
-#solve(a == L, sol_ig, bcs, nullspace=v_basis, solver_parameters={'quadrature_degree': '3'})
-
-##Save solution to file
-#file = VTKFile("IG.pvd")
-#aux = Function(V, name='IG')
-#x = SpatialCoordinate(mesh)
-#aux.interpolate(sol_ig - as_vector((x[0], x[1])))
-#file.write(aux)
-##sys.exit()
-
-#Compute initial guess for the angle field
-theta_ig = Function(W, name='IG theta')
-# basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-e_1 = Constant((1, 0))
-e_2 = Constant((0, 1))
-phi = pi/2
-u_s = sqrt(3) * cos(phi/2)
-v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
-u_0 = u_s * e_1
-v_0 = v_s * e_2
-u_ts = sqrt(3) * cos( (theta_ig+phi)/2 )
-v_ts = 2 * sqrt( 2/ ( 5-3 * cos(theta_ig+phi) ) )
-A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-
 # elastic parameters
 c_1 = 1 #metric constraint
 d_1 = .1
 d_2, d_3 = 1e-2, 1e-2
-
-#defining the energy to minimize
-L = dot(grad(sol_ig).T, grad(sol_ig)) - dot(A_t.T, A_t)
-energy = c_1 * inner(L, L) * dx + d_2 * inner(grad(theta_ig), grad(theta_ig)) * dx
-zeta = TestFunction(W)
-a = derivative(energy, theta_ig, zeta)
-
-#Solve
-solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #'snes_monitor': None, 'snes_max_it': 10})
-
-##Output IG in theta
-#file = VTKFile("IG_theta.pvd")
-#file.write(theta_ig)
-
-PETSc.Sys.Print('Initial guess ok!\n')
-
 
 #Nonlinear problem
 #Define trial and test functions
@@ -111,13 +48,14 @@ y, theta = split(sol)
 
 #Interpolate initial guess
 sol.sub(0).interpolate(sol_ig)
-#Go get code from Hu for the computation of theta
-sol.sub(1).interpolate(theta_ig)
 
 #Define the boundary conditions
 bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+phi = pi/2
+u_s = sqrt(3) * cos(phi/2)
+v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
