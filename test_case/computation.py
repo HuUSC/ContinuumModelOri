@@ -22,7 +22,7 @@ u2 = as_vector((x[0] - val, x[1], 0))
 bcs = [DirichletBC(V, u1, 1), DirichletBC(V, u2, 2)]
 
 #Interior penalty
-alpha = Constant(1e1) #1e2 #penalty parameter
+alpha = Constant(1e3) #1e2 #penalty parameter
 h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
@@ -142,13 +142,13 @@ en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symme
 a -= derivative(en_pen, y, w)
 a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
 
-##Gradient Dirichlet bc - lhs
-#a += alpha/h * inner(dot(grad(y), n), dot(grad(w), n)) * (ds(1) + ds(2)) #LS pen term
-#a -= inner(dot(grad(y), n), dot(dot(grad(grad(w)), n), n)) * (ds(1) + ds(2)) + inner(dot(grad(w), n), dot(dot(grad(grad(y)), n), n)) * (ds(1) + ds(2)) #consistency and sym term
-#
-##Gradient Dirichlet BC - rhs
-#a -= alpha / h * inner(G1, dot(grad(w), n) ) * ds(1) + alpha / h * inner(G2, dot(grad(w), n) ) * ds(2) #LS pen term
-#a += inner(G1, dot(dot(grad(grad(w)), n), n)) * ds(1) + inner(G2, dot(dot(grad(grad(w)), n), n)) * ds(2) #sym term
+#Gradient Dirichlet bc - lhs
+a += alpha/h * inner(dot(grad(y), n), dot(grad(w), n)) * (ds(1) + ds(2)) #LS pen term
+a -= inner(dot(grad(y), n), dot(dot(grad(grad(w)), n), n)) * (ds(1) + ds(2)) + inner(dot(grad(w), n), dot(dot(grad(grad(y)), n), n)) * (ds(1) + ds(2)) #consistency and sym term
+
+#Gradient Dirichlet BC - rhs
+a -= alpha / h * inner(G1, dot(grad(w), n) ) * ds(1) + alpha / h * inner(G2, dot(grad(w), n) ) * ds(2) #LS pen term
+a += inner(G1, dot(dot(grad(grad(w)), n), n)) * ds(1) + inner(G2, dot(dot(grad(grad(w)), n), n)) * ds(2) #sym term
 
 #Solve
 parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-5, 'ksp_type': 'preonly', 'pc_type': 'lu'}
