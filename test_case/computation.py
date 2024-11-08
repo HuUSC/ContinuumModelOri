@@ -115,8 +115,8 @@ bcs = [DirichletBC(Z.sub(0), u1, 1), DirichletBC(Z.sub(0), u2, 2)]
 u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, sol) #variable(theta))
-v_t_p = diff(v_ts, sol) #variable(theta))
+u_t_p = diff(u_ts, variable(theta))
+v_t_p = diff(v_ts, variable(theta))
 
 #Preparation for variational form
 H = variable( grad(grad(y)) )
@@ -126,8 +126,7 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 # elastic parameters
-#c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2
-c_1, c_2, d_1, d_2, d_3 = 1, 0, 1e-2, 1e-1, 1e-2
+c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2
 
 
 #Total energy
