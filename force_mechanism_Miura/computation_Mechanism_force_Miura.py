@@ -180,8 +180,8 @@ while i < max_i:
     a = derivative(Energy, sol, test)
 
     # interior penalty
-    # a -= inner(dot(avg(G), n('+')), jump(grad(w))) * dS  # consistency term
-    # a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS  # pen term
+    a -= inner(dot(avg(G), n('+')), jump(grad(w))) * dS  # consistency term
+    a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS  # pen term
 
     # #Gradient BC
     # a += alpha / h * inner(dot(grad(y), n), dot(grad(w), n)) * (ds(1) + ds(2)) #lhs pen
