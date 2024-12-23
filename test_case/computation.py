@@ -138,8 +138,9 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
-en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
-a -= derivative(en_pen, y, w)
+#en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
+#a -= derivative(en_pen, y, w)
+a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
 a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
 
 #Gradient Dirichlet bc - lhs

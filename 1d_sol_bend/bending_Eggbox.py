@@ -8,12 +8,12 @@ from firedrake.output import VTKFile
 
 # initial conditions for \theta, \tau and \kappa
 phi = np.pi/6
-c_tau = 0.0
+c_tau = 0
 c_kappa = -0.02907*6
-theta0 = [0.2 - np.pi/6, 2.0]
+theta0 = [0, 1.2] #[0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 1000 #1000
+N = 100 #1000
 Tf = 10
 t = np.linspace(0, Tf, N)
 
@@ -28,7 +28,7 @@ lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 L = 10# * lu0
 H = 10# * lv0 
-size_ref = 200 #100
+size_ref = 20 #200
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -190,6 +190,7 @@ aux.interpolate(yeff-as_vector((x[0], x[1], 0)))
 final = VTKFile('yeff.pvd')
 final.write(aux)
 #final.write(yeff)
+sys.exit()
 
 # Saving the result
 with CheckpointFile("Ref.h5", 'w') as afile:

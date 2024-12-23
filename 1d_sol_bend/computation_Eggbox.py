@@ -27,6 +27,14 @@ y_ref.sub(0).interpolate(Y_ref[0])
 y_ref.sub(1).interpolate(Y_ref[1])
 y_ref.sub(2).interpolate(Y_ref[2])
 
+#Estimating max norms
+x = SpatialCoordinate(mesh)
+u_inf = norm(y_ref - as_vector((x[0], x[1], 0)), 'l200')
+print(u_inf)
+theta_inf = norm(theta_ref, 'l200')
+print(theta_inf)
+#sys.exit()
+
 #Initial guess
 #Define the boundary conditions
 bcs = [DirichletBC(V, y_ref, 1), DirichletBC(V, y_ref, 2), DirichletBC(V, y_ref, 3), DirichletBC(V, y_ref, 4)]
@@ -131,11 +139,11 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 # elastic parameters
-c_1, c_2, d_1, d_2, d_3 = 1, .5, 0, 0, 1e-2
-#c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2
+c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2 #ref
+c_1, c_2, d_1, d_2, d_3 = 1, .5, 0, 0, 1e-2 #test
 
 #Total energy
-dens = c_1 * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
+dens = c_1 / det(dot(grad(y).T, grad(y))) * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
 G = diff(dens, H)
 Energy = dens * dx
 
@@ -143,10 +151,9 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
-#a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
-en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
-a -= derivative(en_pen, y, w)
-#a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
+a -=  inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
+#en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
+#a -= derivative(en_pen, y, w)
 a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
 
 #Gradient BC
@@ -158,7 +165,7 @@ a -=  inner( dot(dot(G, n), n), dot(grad(w), n)) * ds #consistency term
 
 #Solve
 #parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
-parameters = {'snes_monitor': None, 'snes_max_it': 10, 'quadrature_degree': '4', 'rtol': 1e-5}
+parameters = {'snes_monitor': None, 'snes_max_it': 10, 'quadrature_degree': '4', 'rtol': 1e-5, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 solve(a == 0, sol, bcs=bcs, solver_parameters=parameters)
 
 
@@ -183,12 +190,19 @@ PETSc.Sys.Print('Error in theta: %.3e' % err_theta)
 file = VTKFile('err_disp.pvd')
 aux = Function(W, name='err_disp')
 u_ref = y_ref - as_vector((x[0], x[1], 0))
-aux.interpolate(sqrt(inner(y - y_ref, y - y_ref)) / sqrt(inner(u_ref, u_ref)))
+aux.interpolate(sqrt(inner(y - y_ref, y - y_ref))) #/ u_inf) #sqrt(inner(u_ref, u_ref)))
 file.write(aux)
 
 #Output error in theta
 file = VTKFile('err_theta.pvd')
 aux = Function(W, name='err_theta')
 #aux.interpolate(abs(theta - theta_ref))
-aux.interpolate(abs(theta - theta_ref) / abs(theta_ref + phi))
+aux.interpolate(abs(theta - theta_ref)) # / theta_inf) #abs(theta_ref + phi))
 file.write(aux)
+
+#Output all errors
+print(assemble(c_1 * inner(L, L) * dx))
+print(assemble(c_2 * q**2 * dx))
+#print(assemble( d_1 * theta**2 * dx(mesh)))
+#print(assemble(d_2 * inner( grad(theta), grad(theta) ) * dx(mesh)))
+print(assemble(d_3 * inner( H, H) * dx))
