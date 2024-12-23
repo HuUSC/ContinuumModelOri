@@ -2,32 +2,27 @@ from firedrake import *
 from firedrake.petsc import PETSc
 import sys
 sys.path.append('.')
-from ode_solve_Eggbox import *
+from ode_solve_Eggbox import * #actuation,bendtwist
 from scipy.integrate import odeint,solve_ivp
 from firedrake.output import VTKFile
 
 # initial conditions for \theta, \tau and \kappa
 phi = np.pi/6
 c_tau = 0
-c_kappa = -0.02907*6
-theta0 = [0, 1.2] #[0.2 - np.pi/6, 2.0]
+c_kappa = 0.02907*6 #-0.02907*6
+theta0 = [.1, 1] #[0.2 - np.pi/6, 2.0]
 
 #time-stepping
 N = 100 #1000
-Tf = 10
+Tf = 10 #10
 t = np.linspace(0, Tf, N)
 
 #Solving the ode to get \theta and \omega
 sol_theta = odeint(actuation, theta0, t, args=(phi, c_tau, c_kappa))
-sys.exit()
-sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
-#print(sol_omega_v)
 
 # Create mesh
-lu0 = np.sqrt(3) * np.cos((phi) / 2)
-lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
-L = 10# * lu0
-H = 10# * lv0 
+L = 10
+H = 10
 size_ref = 20 #200
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
@@ -39,13 +34,18 @@ PETSc.Sys.Print('Nb dof: %i' % V.dim())
 theta = Function(V, name='theta')
 coord = Function(V)
 x = SpatialCoordinate(mesh)
-coord.interpolate(x[1])# / lv0)
+coord.interpolate(x[1])
 coords = coord.vector().array()
 theta.vector()[:] = np.interp(coords, t, sol_theta[:,0])
 
 #plotting the result for theta
-final = VTKFile('theta.pvd')
+final = VTKFile('theta_Eggbox.pvd')
 final.write(theta)
+#sys.exit()
+
+#Getting the Omegas
+sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
+#print(sol_omega_v)
 
 #Interpolate results from the ode computation
 W = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
@@ -64,16 +64,16 @@ final = VTKFile('omega_u.pvd')
 final.write(omega_u)
 final = VTKFile('omega_v.pvd')
 final.write(omega_v)
-
+#sys.exit()
 
 #Computing the rotation
 Z = TensorFunctionSpace(mesh, 'CG', 1, shape=(3,3))
 PETSc.Sys.Print('Nb tensor dof: %i' % Z.dim())
 
 #Solving the ODE to have the BC for the rotation
-sol_d = solve_ivp(ode_rot_d, [0, L], np.identity(3).flatten(), t_eval=t, args=(omega_u, phi)) # L/lu0
+sol_d = solve_ivp(ode_rot_d, [0, L], np.identity(3).flatten(), t_eval=t, args=(omega_u, phi))
 bc_d = Function(Z, name='BC Rot down')
-coord.interpolate(x[0])# / lu0)
+coord.interpolate(x[0])
 coords = coord.vector().array()
 #interpolate each of the coordinates...
 bc_d.vector()[:, 0, 0] = np.interp(coords, sol_d.t, sol_d.y[0,:])
@@ -86,9 +86,9 @@ bc_d.vector()[:, 2, 0] = np.interp(coords, sol_d.t, sol_d.y[6,:])
 bc_d.vector()[:, 2, 1] = np.interp(coords, sol_d.t, sol_d.y[7,:])
 bc_d.vector()[:, 2, 2] = np.interp(coords, sol_d.t, sol_d.y[8,:])
 
-sol_l = solve_ivp(ode_rot_l, [0, H], np.identity(3).flatten(), t_eval=t, args=(omega_v, phi)) #H/lv0
+sol_l = solve_ivp(ode_rot_l, [0, H], np.identity(3).flatten(), t_eval=t, args=(omega_v, phi))
 bc_l = Function(Z, name='BC Rot left')
-coord.interpolate(x[1])# / lv0)
+coord.interpolate(x[1])
 coords = coord.vector().array()
 bc_l.vector()[:, 0, 0] = np.interp(coords, sol_l.t, sol_l.y[0,:])
 bc_l.vector()[:, 0, 1] = np.interp(coords, sol_l.t, sol_l.y[1,:])
@@ -100,9 +100,9 @@ bc_l.vector()[:, 2, 0] = np.interp(coords, sol_l.t, sol_l.y[6,:])
 bc_l.vector()[:, 2, 1] = np.interp(coords, sol_l.t, sol_l.y[7,:])
 bc_l.vector()[:, 2, 2] = np.interp(coords, sol_l.t, sol_l.y[8,:])
 
-sol_t = solve_ivp(ode_rot_t, [0, L], bc_l.at(0, H).flatten(), t_eval=t, args=(omega_u, phi, H)) #L/lu0
+sol_t = solve_ivp(ode_rot_t, [0, L], bc_l.at(0, H).flatten(), t_eval=t, args=(omega_u, phi, H))
 bc_t = Function(Z, name='BC Rot top')
-coord.interpolate(x[0])# / lu0)
+coord.interpolate(x[0])
 coords = coord.vector().array()
 bc_t.vector()[:, 0, 0] = np.interp(coords, sol_t.t, sol_t.y[0,:])
 bc_t.vector()[:, 0, 1] = np.interp(coords, sol_t.t, sol_t.y[1,:])
@@ -114,9 +114,9 @@ bc_t.vector()[:, 2, 0] = np.interp(coords, sol_t.t, sol_t.y[6,:])
 bc_t.vector()[:, 2, 1] = np.interp(coords, sol_t.t, sol_t.y[7,:])
 bc_t.vector()[:, 2, 2] = np.interp(coords, sol_t.t, sol_t.y[8,:])
 
-sol_r = solve_ivp(ode_rot_r, [0, H], bc_d.at(L, 0).flatten(), t_eval=t, args=(omega_v, phi, L)) #H/lv0
+sol_r = solve_ivp(ode_rot_r, [0, H], bc_d.at(L, 0).flatten(), t_eval=t, args=(omega_v, phi, L))
 bc_r = Function(Z, name='BC Rot right')
-coord.interpolate(x[1])# / lv0)
+coord.interpolate(x[1])
 coords = coord.vector().array()
 bc_r.vector()[:, 0, 0] = np.interp(coords, sol_r.t, sol_r.y[0,:])
 bc_r.vector()[:, 0, 1] = np.interp(coords, sol_r.t, sol_r.y[1,:])
@@ -127,11 +127,6 @@ bc_r.vector()[:, 1, 2] = np.interp(coords, sol_r.t, sol_r.y[5,:])
 bc_r.vector()[:, 2, 0] = np.interp(coords, sol_r.t, sol_r.y[6,:])
 bc_r.vector()[:, 2, 1] = np.interp(coords, sol_r.t, sol_r.y[7,:])
 bc_r.vector()[:, 2, 2] = np.interp(coords, sol_r.t, sol_r.y[8,:])
-
-#Test
-#print(bc_r.at(L, H))
-#print(bc_t.at(L, H))
-#sys.exit()
 
 #Dirichlet BC
 bcs = [DirichletBC(Z, bc_d, 3), DirichletBC(Z, bc_t, 4), DirichletBC(Z, bc_l, 1), DirichletBC(Z, bc_r, 2)]
@@ -166,10 +161,10 @@ final.write(aux)
 #Recomputing the effective deformation
 
 # the coefficient functions
-u_s = sqrt(3.0) * cos(phi/2)
-v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
-u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
-v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
+u_s = 2 * sin( ( acos( 1-cos(phi) ) + phi)/2 )
+u_ts = 2 * sin( ( acos( 1-cos(theta+phi) ) + theta+phi)/2 )
+v_s = 2 * sin( ( acos( 1-cos(phi) ) - phi)/2 )
+v_ts = 2 * sin( ( acos( 1-cos(theta+phi) ) - theta - phi)/2 )
 
 
 #Bilinear form
@@ -187,7 +182,7 @@ solve(a == l, yeff, nullspace=nullspace)
 #plotting the result
 aux = Function(W, name='yeff 3d')
 aux.interpolate(yeff-as_vector((x[0], x[1], 0)))
-final = VTKFile('yeff.pvd')
+final = VTKFile('yeff_Eggbox.pvd')
 final.write(aux)
 #final.write(yeff)
 sys.exit()

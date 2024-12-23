@@ -2,7 +2,7 @@ from firedrake import *
 from firedrake.petsc import PETSc
 import sys
 sys.path.append('.')
-from ode_solve import *
+from ode_solve_Miura import *
 from scipy.integrate import odeint,solve_ivp
 from firedrake.output import VTKFile
 
@@ -10,7 +10,7 @@ from firedrake.output import VTKFile
 phi = np.pi/6
 c_tau = 0
 c_kappa = -0.02907*6
-theta0 = [0, 1.2] #[0.2 - np.pi/6, 2.0]
+theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
 N = 100 #1000
@@ -43,9 +43,9 @@ coord.interpolate(x[1])# / lv0)
 coords = coord.vector().array()
 theta.vector()[:] = np.interp(coords, t, sol_theta[:,0])
 
-#plotting the result for theta
-final = VTKFile('theta.pvd')
-final.write(theta)
+##plotting the result for theta
+#final = VTKFile('theta.pvd')
+#final.write(theta)
 
 #Interpolate results from the ode computation
 W = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
@@ -59,11 +59,11 @@ omega_v.vector()[:,0] = np.interp(coords, t, sol_omega_v[0,:])
 omega_v.vector()[:,1] = np.interp(coords, t, sol_omega_v[1,:])
 omega_v.vector()[:,2] = np.interp(coords, t, sol_omega_v[2,:])
 
-#plotting the result for omega
-final = VTKFile('omega_u.pvd')
-final.write(omega_u)
-final = VTKFile('omega_v.pvd')
-final.write(omega_v)
+##plotting the result for omega
+#final = VTKFile('omega_u.pvd')
+#final.write(omega_u)
+#final = VTKFile('omega_v.pvd')
+#final.write(omega_v)
 
 
 #Computing the rotation
@@ -187,7 +187,7 @@ solve(a == l, yeff, nullspace=nullspace)
 #plotting the result
 aux = Function(W, name='yeff 3d')
 aux.interpolate(yeff-as_vector((x[0], x[1], 0)))
-final = VTKFile('yeff.pvd')
+final = VTKFile('yeff_Miura.pvd')
 final.write(aux)
 #final.write(yeff)
 sys.exit()
