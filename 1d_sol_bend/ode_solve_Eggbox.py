@@ -1,14 +1,21 @@
 import numpy as np
+import sympy as sp
 
 # ## ODE solve -- actuation field(\theta)
 def actuation(vec, x, phi, c_tau, c_kappa):
+    s = sp.symbols('s')
+    lv = 2.0 * sp.sqrt( 2/(5 - 3 * sp.cos(s)) )
+    lu = sp.sqrt(3.0) * sp.cos( (s)/2.0 )
+    #lu = 2 * sp.sin( ( sp.acos( 1-sp.cos(s) ) + s)/2 )
+    #lv = 2 * sp.sin( ( sp.acos( 1-sp.cos(s) ) - s)/2 )
+    lpu = sp.diff(lu, s)
+    lpv = sp.diff(lv, s)
+    d = sp.diff(lpu/lv, s) * lv/lpu
+    d = sp.lambdify(s, d, 'numpy')
+    aux_1 = sp.lambdify(s, lv**2/lpu/lu**3, 'numpy')
+    aux_2 = sp.lambdify(s, lpv/lv/lpu**2, 'numpy')
     theta, d_theta = vec
-    lv = 2.0 * np.sqrt( 2/(5 - 3 * np.cos( theta+phi )) )
-    lu = np.sqrt(3.0) * np.cos( (theta+phi)/2.0 )
-    lpv = - 3 * np.sqrt(2) * np.sin(theta+phi)/(5 - 3 * np.cos( theta+phi ))**(3/2)
-    lpu = - np.sqrt(3) * np.sin( (theta+phi)/2 ) / 2
-    d = ( 3 * np.cos( 3*(theta+phi)/2 ) - 5 * np.cos( (theta+phi)/2 ) ) / 8 / np.sqrt( 10/3 - 2 * np.cos( theta+phi ) )
-    equ = [d_theta, - d * lv/lpu * d_theta**2 + c_tau**2 * lv**2/lpu/lu**3 + c_kappa**2 * lpv/lv/lpu**2]
+    equ = [d_theta, - d(theta+phi) * d_theta**2 + c_tau**2 * aux_1(theta+phi) + c_kappa**2 * aux_2(theta+phi)]
     return equ
 
 # solutions to bend and twist fields

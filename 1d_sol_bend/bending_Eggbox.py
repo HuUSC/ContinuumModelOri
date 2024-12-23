@@ -2,7 +2,7 @@ from firedrake import *
 from firedrake.petsc import PETSc
 import sys
 sys.path.append('.')
-from ode_solve import *
+from ode_solve_Eggbox import *
 from scipy.integrate import odeint,solve_ivp
 from firedrake.output import VTKFile
 
@@ -19,9 +19,9 @@ t = np.linspace(0, Tf, N)
 
 #Solving the ode to get \theta and \omega
 sol_theta = odeint(actuation, theta0, t, args=(phi, c_tau, c_kappa))
+sys.exit()
 sol_omega_u, sol_omega_v = bendtwist(sol_theta, phi, c_tau, c_kappa)
 #print(sol_omega_v)
-#sys.exit()
 
 # Create mesh
 lu0 = np.sqrt(3) * np.cos((phi) / 2)
