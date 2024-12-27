@@ -13,7 +13,7 @@ c_kappa = -0.02907*6
 theta0 = [0.2 - np.pi/6, 2.0]
 
 #time-stepping
-N = 100 #1000
+N = 1000 #1000
 Tf = 10
 t = np.linspace(0, Tf, N)
 
@@ -28,7 +28,7 @@ lu0 = np.sqrt(3) * np.cos((phi) / 2)
 lv0 = 2 * np.sqrt(2 / (5 - 3 * np.cos(phi)))
 L = 10# * lu0
 H = 10# * lv0 
-size_ref = 20 #200
+size_ref = 200 #200
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -43,9 +43,9 @@ coord.interpolate(x[1])# / lv0)
 coords = coord.vector().array()
 theta.vector()[:] = np.interp(coords, t, sol_theta[:,0])
 
-##plotting the result for theta
-#final = VTKFile('theta.pvd')
-#final.write(theta)
+#plotting the result for theta
+final = VTKFile('theta_Miura_ref.pvd')
+final.write(theta)
 
 #Interpolate results from the ode computation
 W = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
@@ -193,7 +193,7 @@ final.write(aux)
 sys.exit()
 
 # Saving the result
-with CheckpointFile("Ref.h5", 'w') as afile:
+with CheckpointFile("Ref_Miura.h5", 'w') as afile:
     afile.save_mesh(mesh)
     afile.save_function(yeff)
     afile.save_function(theta)

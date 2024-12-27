@@ -7,7 +7,7 @@ from firedrake.petsc import PETSc
 L = 10
 H = 10
 size_ref = 80 #80 computation #10 #debug
-mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed')
+mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='mesh')
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
@@ -16,7 +16,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Load ref computation from a file
-with CheckpointFile("Ref.h5", 'r') as afile:
+with CheckpointFile("Ref_Eggbox.h5", 'r') as afile:
     meshRef = afile.load_mesh("meshRef")
     Y_ref = afile.load_function(meshRef, "yeff")
     Theta_ref = afile.load_function(meshRef, "theta")
@@ -29,10 +29,10 @@ y_ref.sub(2).interpolate(Y_ref[2])
 
 #Estimating max norms
 x = SpatialCoordinate(mesh)
-u_inf = norm(y_ref - as_vector((x[0], x[1], 0)), 'l200')
-print(u_inf)
-theta_inf = norm(theta_ref, 'l200')
-print(theta_inf)
+#u_inf = norm(y_ref - as_vector((x[0], x[1], 0)), 'l200')
+#PETSc.Sys.Print(u_inf)
+#theta_inf = norm(theta_ref, 'l200')
+#PETSc.Sys.Print(theta_inf)
 #sys.exit()
 
 #Initial guess
@@ -80,24 +80,25 @@ theta_ig = Function(W, name='IG theta')
 e_1 = Constant((1, 0))
 e_2 = Constant((0, 1))
 phi = pi/6
-u_s = sqrt(3.0) * cos(phi/2)
-v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
+u_s = 2 * sin( ( acos( 1-cos(phi) ) + phi)/2 )
+v_s = 2 * sin( ( acos( 1-cos(phi) ) - phi)/2 )
 u_0 = u_s * e_1
 v_0 = v_s * e_2
-u_ts = sqrt(3.0) * cos( (theta_ig+phi)/2 )
-v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta_ig+phi) ) )
+u_ts = 2 * sin( ( acos( 1-cos(theta_ig+phi) ) + theta_ig+phi)/2 ) #sqrt(3.0) * cos( (theta_ig+phi)/2 )
+v_ts = 2 * sin( ( acos( 1-cos(theta_ig+phi) ) - theta_ig -phi)/2 ) #2 * sqrt( 2.0/ ( 5-3 * cos(theta_ig+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
 
 #defining the energy to minimize
 L = dot(grad(sol_ig).T, grad(sol_ig)) - dot(A_t.T, A_t)
-c = 1 #coercivity constant
+c = 10 #coercivity constant
 energy = inner(L, L) * dx + c * inner(grad(theta_ig), grad(theta_ig)) * dx
 zeta = TestFunction(W)
 a = derivative(energy, theta_ig, zeta)
 
 #Solve
-#bcs = [DirichletBC(W, theta_ref, 1), DirichletBC(W, theta_ref, 2), DirichletBC(W, theta_ref, 3), DirichletBC(W, theta_ref, 4)]
-solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '2'}) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+#bcs = [DirichletBC(W, theta_ref, 1), DirichletBC(W, theta_ref, 3), DirichletBC(W, theta_ref, 2), DirichletBC(W, theta_ref, 4)]
+solver_parameters={'quadrature_degree': '3', 'snes_monitor': None, 'snes_max_it': 10} #bcs=bcs
+solve(a == 0, theta_ig, solver_parameters=solver_parameters) #bcs=bcs
 
 #Output IG in theta
 file = VTKFile("IG_theta.pvd")
@@ -121,15 +122,19 @@ sol.sub(0).interpolate(sol_ig)
 #Go get code from Hu for the computation of theta
 sol.sub(1).interpolate(theta_ig)
 
+#test
+#sol.sub(0).interpolate(y_ref)
+#sol.sub(1).interpolate(theta_ref)
+
 #Define the boundary conditions
 bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2), DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4), DirichletBC(Z.sub(1), theta_ref, 1), DirichletBC(Z.sub(1), theta_ref, 2), DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
-v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
+u_ts = 2 * sin( ( acos( 1-cos(theta+phi) ) + theta+phi)/2 )
+v_ts = 2 * sin( ( acos( 1-cos(theta+phi) ) - theta -phi)/2 )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, sol) #variable(theta))
-v_t_p = diff(v_ts, sol) #variable(theta))
+u_t_p = diff(u_ts, variable(theta))
+v_t_p = diff(v_ts, variable(theta))
 
 #Preparation for variational form
 H = variable( grad(grad(y)) )
@@ -139,8 +144,10 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 
 # elastic parameters
-c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2 #ref
-c_1, c_2, d_1, d_2, d_3 = 1, .5, 0, 0, 1e-2 #test
+#c_1, c_2, d_1, d_2, d_3 = 1, .5, .1, 1e-2, 1e-2 #ref
+c_1, c_2, d_1, d_2, d_3 = 1, .5, 1, 1, 1 #works
+c_1, c_2, d_1, d_2, d_3 = 1, .5, .01, .01, .05 #test
+c_1, c_2, d_1, d_2, d_3 = 1, .5, 0, 0, .05 #test
 
 #Total energy
 dens = c_1 / det(dot(grad(y).T, grad(y))) * inner( L, L ) + c_2 * q**2 + d_1 * theta**2 + d_2 * inner( grad(theta), grad(theta) ) + d_3 * inner( H, H)
@@ -166,9 +173,10 @@ a -=  inner( dot(dot(G, n), n), dot(grad(w), n)) * ds #consistency term
 #Solve
 #parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 parameters = {'snes_monitor': None, 'snes_max_it': 10, 'quadrature_degree': '4', 'rtol': 1e-5, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
+#try:
 solve(a == 0, sol, bcs=bcs, solver_parameters=parameters)
-
-
+#except exceptions.ConvergenceError:
+    
 #plotting the results
 aux = Function(V, name='yeff 3d')
 aux.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
@@ -179,6 +187,7 @@ aux = Function(W, name='theta')
 aux.assign(sol.sub(1))
 file = VTKFile('theta_comp.pvd')
 file.write(aux)
+#sys.exit()
 
 #Computation of error
 err_y = errornorm(y_ref, sol.sub(0), norm_type='H1')
@@ -187,22 +196,32 @@ err_theta = errornorm(theta_ref, sol.sub(1), norm_type='H1')
 PETSc.Sys.Print('Error in theta: %.3e' % err_theta)
 
 #Output error in y
-file = VTKFile('err_disp.pvd')
-aux = Function(W, name='err_disp')
+file = VTKFile('err_disp_Eggbox.pvd')
+aux_u = Function(W, name='err_disp')
 u_ref = y_ref - as_vector((x[0], x[1], 0))
-aux.interpolate(sqrt(inner(y - y_ref, y - y_ref))) #/ u_inf) #sqrt(inner(u_ref, u_ref)))
-file.write(aux)
+aux_u.interpolate(sqrt(inner(y - y_ref, y - y_ref)))
+file.write(aux_u)
 
 #Output error in theta
-file = VTKFile('err_theta.pvd')
-aux = Function(W, name='err_theta')
-#aux.interpolate(abs(theta - theta_ref))
-aux.interpolate(abs(theta - theta_ref)) # / theta_inf) #abs(theta_ref + phi))
-file.write(aux)
+file = VTKFile('err_theta_Eggbox.pvd')
+aux_t = Function(W, name='err_theta')
+aux_t.interpolate(abs(theta - theta_ref))
+file.write(aux_t)
+
+# Saving the result
+with CheckpointFile("Errors_Eggbox.h5", 'w') as afile:
+    afile.save_mesh(mesh)
+    afile.save_function(aux_u)
+    afile.save_function(aux_t)
+
+sys.exit()
 
 #Output all errors
 print(assemble(c_1 * inner(L, L) * dx))
+u_t_p = cos( ( acos( 1-cos(theta+phi) ) + theta+phi)/2 ) * (1 - sin(theta+phi)/(2*cos(theta+phi) - cos(theta+phi)**2))
+v_t_p = cos( ( acos( 1-cos(theta+phi) ) - theta-phi)/2 ) * (1 + sin(theta+phi)/(2*cos(theta+phi) - cos(theta+phi)**2))
+q = v_t_p * v_ts * inner( H, outer(N,u_0,u_0)  ) + u_t_p * u_ts * inner( H,outer(N,v_0,v_0) )
 print(assemble(c_2 * q**2 * dx))
-#print(assemble( d_1 * theta**2 * dx(mesh)))
-#print(assemble(d_2 * inner( grad(theta), grad(theta) ) * dx(mesh)))
+print(assemble( d_1 * theta**2 * dx(mesh)))
+print(assemble(d_2 * inner( grad(theta), grad(theta) ) * dx(mesh)))
 print(assemble(d_3 * inner( H, H) * dx))

@@ -22,7 +22,7 @@ u2 = as_vector((x[0] - val, x[1], 0))
 bcs = [DirichletBC(V, u1, 1), DirichletBC(V, u2, 2)]
 
 #Interior penalty
-alpha = Constant(1e3) #1e2 #penalty parameter
+alpha = Constant(1e2) #1e3 #1e2 #penalty parameter
 h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
@@ -112,6 +112,7 @@ sol.sub(1).interpolate(theta_ig)
 bcs = [DirichletBC(Z.sub(0), u1, 1), DirichletBC(Z.sub(0), u2, 2)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+#theta = variable(theta)
 u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )

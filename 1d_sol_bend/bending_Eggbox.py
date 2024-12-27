@@ -10,12 +10,12 @@ from firedrake.output import VTKFile
 phi = np.pi/6
 c_tau = 0
 c_kappa = 0.02907*6 #-0.02907*6
-theta0 = [.1, 1] #[0.2 - np.pi/6, 2.0]
+theta0 = [.2-np.pi/3, 0.1] #[0.2 - np.pi/6, 2.0] #[.1, 1]
 
 #time-stepping
-N = 100 #1000
+N = 1000 #1000
 Tf = 10 #10
-t = np.linspace(0, Tf, N)
+t = np.linspace(0, Tf, N) #np.linspace(0, Tf, N)
 
 #Solving the ode to get \theta and \omega
 sol_theta = odeint(actuation, theta0, t, args=(phi, c_tau, c_kappa))
@@ -23,7 +23,7 @@ sol_theta = odeint(actuation, theta0, t, args=(phi, c_tau, c_kappa))
 # Create mesh
 L = 10
 H = 10
-size_ref = 20 #200
+size_ref = 200 #200
 mesh = RectangleMesh(size_ref, size_ref, L, H, diagonal='crossed', name='meshRef')
 
 # Define function space
@@ -188,7 +188,7 @@ final.write(aux)
 sys.exit()
 
 # Saving the result
-with CheckpointFile("Ref.h5", 'w') as afile:
+with CheckpointFile("Ref_Eggbox.h5", 'w') as afile:
     afile.save_mesh(mesh)
     afile.save_function(yeff)
     afile.save_function(theta)
