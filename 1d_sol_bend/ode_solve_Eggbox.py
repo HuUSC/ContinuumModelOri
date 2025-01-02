@@ -14,7 +14,7 @@ def actuation(vec, x, phi, c_tau, c_kappa):
     d = sp.lambdify(s, d, 'numpy')
     aux_1 = sp.lambdify(s, lv**2/lpu/lu**3, 'numpy')
     aux_2 = sp.lambdify(s, lpv/lv/lpu**2, 'numpy')
-    equ = [d_theta, - d(theta+phi) * d_theta**2 + c_tau**2 * aux_1(theta+phi) + c_kappa**2 * aux_2(theta+phi)]
+    equ = [d_theta, - d(theta) * d_theta**2 + c_tau**2 * aux_1(theta) + c_kappa**2 * aux_2(theta)]
     return equ
 
 # solutions to bend and twist fields
