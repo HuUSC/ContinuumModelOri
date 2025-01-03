@@ -27,7 +27,7 @@ def bendtwist(vec, phi, c_tau, c_kappa):
     omegau_3 = -d_theta * sp.lambdify(s, lpu / lv, 'numpy')(theta)
     omegav_1 = kappa * sp.lambdify(s, lpv * lv * lu, 'numpy')(theta)
     omegav_2 = -tau * sp.lambdify(s, lv, 'numpy')(theta)
-    omegav_3 = 0.0
+    omegav_3 = 0.0 * theta
     return np.array([omegau_1, omegau_2, omegau_3]), np.array([omegav_1, omegav_2, omegav_3])
 
 #ODE for down BC
