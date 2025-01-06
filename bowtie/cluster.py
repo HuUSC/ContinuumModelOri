@@ -2,9 +2,10 @@ from firedrake import *
 import sys
 from firedrake.output import *
 from firedrake.petsc import PETSc
+import numpy as np
 
 # Create mesh
-mesh = Mesh('mesh.msh')
+mesh = Mesh('mesh.msh', name='mesh')
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -13,18 +14,14 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val = 0.1 #0.41 #25e-2 #1e-1 #47e-1
+val = 0
 x = SpatialCoordinate(mesh)
 #BC
 bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
-#bcs = [DirichletBC(V, bnd, 1), DirichletBC(V, bnd, 2)]
-#boundary_CL = as_vector((x[0] + val, x[1]))
-#boundary_CR = as_vector((x[0] - val, x[1]))
-#bcs = [DirichletBC(V, boundary_CL, 1), DirichletBC(V, boundary_CR, 2)]
 
-#Initial guess in displacement
-sol_ig = Function(V, name='IG')
-sol_ig.interpolate(as_vector(((1-2*val)*x[0] + val, x[1])))
+##Initial guess in displacement
+#sol_ig = Function(V, name='IG')
+#sol_ig.interpolate(as_vector(((1-2*val)*x[0] + val, x[1])))
 
 #Interior penalty
 alpha = Constant(1e-1) #1e-1 #penalty parameter
@@ -47,13 +44,20 @@ sol = Function(Z, name='sol')
 y, theta = split(sol)
 
 #Interpolate initial guess
-sol.sub(0).interpolate(sol_ig)
+#sol.sub(0).interpolate(bnd)
+
+#Load the initial guess from a file
+with CheckpointFile("res.h5", 'r') as afile:
+    meshR = afile.load_mesh("mesh")
+    sol_old = afile.load_function(meshR, "sol", val)
+    sol.interpolate(sol_old)
+#sys.exit()
 
 #Define the boundary conditions
 bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-phi = pi/6 #pi/2 #old
+phi = pi/6
 u_s = sqrt(3) * cos(phi/2)
 v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
@@ -72,8 +76,8 @@ L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
 #Total energy
 #c_2 = 0 #test
 J = sqrt(det(dot(grad(y).T, grad(y))))
-dens = c_1 * inner(L, L) + d_1 * theta**2 + d_2 * inner(grad(theta), grad(theta)) + d_3 * inner(H, H)
-#dens = c_1 * inner(L, L)/J + d_1 * theta**2 + d_2 * inner(grad(theta), grad(theta)) + d_3 * inner(H, H) #test
+#dens = c_1 * inner(L, L) + d_1 * theta**2 + d_2 * inner(grad(theta), grad(theta)) + d_3 * inner(H, H)
+dens = c_1 * inner(L, L)/J + d_1 * theta**2 + d_2 * inner(grad(theta), grad(theta)) + d_3 * inner(H, H) #test
 G = diff(dens, H)
 Energy = dens * dx
 
@@ -92,45 +96,46 @@ a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen t
 #a -= alpha / h * inner(dot(dot(grad(bnd), n), n), dot(dot(grad(w), n), n)) * (ds(1) + ds(2))  #rhs pen
 #a -= replace(derivative(en_pen, y, w), {y:bnd}) #rhs consistency and symmetry term
 
-#Solve
+#Solve parameters
 #parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-5}
 v_basis = VectorSpaceBasis(constant=True)
 nullspace = MixedVectorSpaceBasis(Z, [v_basis, Z.sub(1)])
-solve(a == 0, sol, bcs=bcs, nullspace=nullspace, solver_parameters=parameters)
 
-#plotting the results
-VV = VectorFunctionSpace(mesh, "CG", 1)
-aux = Function(VV, name='yeff 3d')
-aux.interpolate(sol.sub(0)-as_vector((x[0], x[1])))
-file = VTKFile('surf_comp.pvd')
-file.write(aux)
+disp_max = .45
+d_disp = 1e-3
+while val < disp_max:
+    #Increase disp
+    val += d_disp
+    PETSc.Sys.Print('Disp: %.3f' % val)
 
-aux = Function(W, name='theta')
-aux.assign(sol.sub(1))
-file = VTKFile('theta_comp.pvd')
-file.write(aux)
+    #Define the boundary conditions
+    bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
+    bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
 
-#Computing reaction forces
-v_reac = Function(Z)
-bc_l = DirichletBC(V.sub(0), Constant(1), 1)
-bc_l.apply(v_reac.sub(0))
-res_l = assemble(action(a, v_reac))
-#print('Reaction on the left: %.3e' % assemble(res))
-#sys.exit()
-v_reac.sub(0).interpolate(Constant((0, 0)))
-bc_r = DirichletBC(V.sub(0), Constant(1), 2)
-bc_r.apply(v_reac.sub(0))
-res_r = assemble(action(a, v_reac))
-#print('Reaction on the right: %.3e' % assemble(res))
-PETSc.Sys.Print('Disp: %.3e' % val)
-PETSc.Sys.Print('Total force: %.3e' % (abs(res_l)+abs(res_r)))
+    #Solve
+    solve(a == 0, sol, bcs=bcs, nullspace=nullspace, solver_parameters=parameters)
 
-#en = assemble(c_1 * inner(L, L) * dx)
-#print(en)
-#en = assemble(d_1 * theta**2 * dx)
-#print(en)
-#en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
-#print(en)
-#en = assemble( d_3 * inner(H, H) * dx)
-#print(en)
+    #Save results
+    with CheckpointFile("res.h5", 'w') as afile:
+        afile.save_mesh(mesh)
+        afile.save_function(sol, val)
+
+    #Computing reaction forces
+    v_reac = Function(Z)
+    bc_l = DirichletBC(V.sub(0), Constant(1), 1)
+    bc_l.apply(v_reac.sub(0))
+    #res_l = assemble(action(a, v_reac))
+    #print('Reaction on the left: %.3e' % assemble(res))
+    #v_reac.sub(0).interpolate(Constant((0, 0)))
+    bc_r = DirichletBC(V.sub(0), Constant(-1), 2)
+    bc_r.apply(v_reac.sub(0))
+    res_r = assemble(action(a, v_reac))
+    res = assemble(action(a, v_reac))
+    #print('Reaction on the right: %.3e' % assemble(res))
+    #PETSc.Sys.Print('Disp: %.3e' % val)
+    #PETSc.Sys.Print('Total force: %.3e' % (abs(res_l)+abs(res_r)))
+
+    #Save forces
+    with open('force.txt', 'a') as f:
+        np.savetxt(f, np.array([val, res])[None], delimiter=',', fmt='%.3e')

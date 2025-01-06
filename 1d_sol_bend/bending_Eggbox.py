@@ -11,6 +11,8 @@ phi = np.pi/6
 c_tau = 0
 c_kappa = 0.02907*6 #-0.02907*6
 theta0 = [.2-np.pi/3, 0.1] #[0.2 - np.pi/6, 2.0] #[.1, 1]
+print(theta0)
+sys.exit()
 
 #time-stepping
 N = 1000 #1000
