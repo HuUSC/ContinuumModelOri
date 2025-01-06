@@ -14,20 +14,20 @@ def actuation(vec, x, phi, c_tau, c_kappa):
     d = sp.lambdify(s, d, 'numpy')
     aux_1 = sp.lambdify(s, lv**2/lpu/lu**3, 'numpy')
     aux_2 = sp.lambdify(s, lpv/lv/lpu**2, 'numpy')
-    equ = [d_theta, - d(theta+phi) * d_theta**2 + c_tau**2 * aux_1(theta+phi) + c_kappa**2 * aux_2(theta+phi)]
+    equ = [d_theta, - d(theta) * d_theta**2 + c_tau**2 * aux_1(theta) + c_kappa**2 * aux_2(theta)]
     return equ
 
 # solutions to bend and twist fields
 def bendtwist(vec, phi, c_tau, c_kappa):
     theta, d_theta = vec[:, 0], vec[:, 1]
-    kappa = c_kappa / sp.lambdify(s, lv**2*lu*lpu, 'numpy')(theta + phi)
-    tau = c_tau / sp.lambdify(s, lu**2, 'numpy')(theta + phi)
-    omegau_1 = tau * sp.lambdify(s, lu, 'numpy')(theta + phi)
-    omegau_2 = kappa * sp.lambdify(s, lu * lpu * lv, 'numpy')(theta + phi)
-    omegau_3 = -d_theta * sp.lambdify(s, lpu / lv, 'numpy')(theta + phi)
-    omegav_1 = kappa * sp.lambdify(s, lpv * lv * lu, 'numpy')(theta + phi)
-    omegav_2 = -tau * sp.lambdify(s, lv, 'numpy')(theta + phi)
-    omegav_3 = 0 * sp.lambdify(s, lv, 'numpy')(theta + phi) #d_theta * sp.lambdify(s, lpv/lu, 'numpy')(theta + phi)
+    kappa = c_kappa * sp.lambdify(s, 1/lv**2/lu/lpu, 'numpy')(theta)
+    tau = c_tau / sp.lambdify(s, 1/lu**2, 'numpy')(theta)
+    omegau_1 = tau * sp.lambdify(s, lu, 'numpy')(theta)
+    omegau_2 = kappa * sp.lambdify(s, lu * lpu * lv, 'numpy')(theta)
+    omegau_3 = -d_theta * sp.lambdify(s, lpu / lv, 'numpy')(theta)
+    omegav_1 = kappa * sp.lambdify(s, lpv * lv * lu, 'numpy')(theta)
+    omegav_2 = -tau * sp.lambdify(s, lv, 'numpy')(theta)
+    omegav_3 = 0.0 * theta
     return np.array([omegau_1, omegau_2, omegau_3]), np.array([omegav_1, omegav_2, omegav_3])
 
 #ODE for down BC
