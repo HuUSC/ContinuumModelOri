@@ -4,16 +4,22 @@ from firedrake.output import *
 from firedrake.petsc import PETSc
 import numpy as np
 
+# basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+phi = pi/6
+u_s = sqrt(3) * cos(phi/2)
+v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
+
 # Create mesh
 #mesh = Mesh('mesh.msh', name='mesh')
+mesh = RectangleMesh()
 
-#Load mesh
-with CheckpointFile("res.h5", 'r') as afile:
-    mesh = afile.load_mesh("mesh")
+##Load mesh
+#with CheckpointFile("res.h5", 'r') as afile:
+#    mesh = afile.load_mesh("mesh")
 
-##Save mesh to file
-#with CheckpointFile("res.h5", 'w') as afile:
-#        afile.save_mesh(mesh)
+#Save mesh to file
+with CheckpointFile("res_mech.h5", 'w') as afile:
+    afile.save_mesh(mesh)
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -43,9 +49,9 @@ y, theta = split(sol)
         
 #Interpolate initial guess
 x = SpatialCoordinate(mesh)
-val =.1
-bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
-sol.sub(0).interpolate(bnd)
+#val =.1
+#bnd = as_vector(((1-2*val)*x[0] + val, x[1]))
+sol.sub(0).interpolate(x)
 
 ##Load the initial guess from a file
 #idx = 500
@@ -61,9 +67,6 @@ sol.sub(0).interpolate(bnd)
 #sys.exit()
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-phi = pi/6
-u_s = sqrt(3) * cos(phi/2)
-v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
