@@ -11,7 +11,10 @@ v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 
 # Create mesh
 #mesh = Mesh('mesh.msh', name='mesh')
-mesh = RectangleMesh()
+N = 30
+l, w = u_s, v_s
+#mesh = RectangleMesh(N, N, l, w, diagonal='crossed', name='mesh')
+mesh = UnitSquareMesh(N, N, diagonal='crossed', name='mesh')
 
 ##Load mesh
 #with CheckpointFile("res.h5", 'r') as afile:
@@ -55,7 +58,7 @@ sol.sub(0).interpolate(x)
 
 ##Load the initial guess from a file
 #idx = 500
-#with CheckpointFile("res.h5", 'r') as afile:
+#with CheckpointFile("res_mech.h5", 'r') as afile:
 #    sol_old = afile.load_function(mesh, "sol", idx=idx)
 #    sol.sub(0).interpolate(as_vector((sol_old.sub(0)[0], sol_old.sub(0)[1])))
 #    sol.sub(1).assign(sol_old.sub(1))
@@ -103,8 +106,8 @@ v_basis = VectorSpaceBasis(constant=True)
 nullspace = MixedVectorSpaceBasis(Z, [v_basis, Z.sub(1)])
 
 disp_max = .42
-d_disp = 1e-4
-idx = 1000
+d_disp = 1e-2
+idx = -1
 val = idx * d_disp
 while val < disp_max:
     #Increase disp
@@ -112,15 +115,18 @@ while val < disp_max:
     idx += 1
     PETSc.Sys.Print('Disp: %.4f' % val)
 
-    #Define the boundary conditions
-    bnd = (1-2*val)*x[0] + val
-    bcs = [DirichletBC(Z.sub(0).sub(0), bnd, 1), DirichletBC(Z.sub(0).sub(0), bnd, 2)]
+    #Define the boundary conditions for the mechanism motion
+    u_ts_0 = sqrt(3.0) * cos((val + phi) / 2.0)
+    v_ts_0 = 2.0 * sqrt(2.0 / (5.0 - 3.0 * cos(val + phi)))
+    bnd = as_vector((u_ts_0 / u_s * x[0], v_ts_0 / v_s * x[1]))
+    bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2), DirichletBC(Z.sub(0), bnd, 3), DirichletBC(Z.sub(0), bnd, 4)]
+    #bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
 
     #Solve
     solve(a == 0, sol, bcs=bcs, nullspace=nullspace, solver_parameters=parameters)
 
     #Save results
-    with CheckpointFile("res.h5", 'a') as afile:
+    with CheckpointFile("res_mech.h5", 'a') as afile:
         afile.save_function(sol, idx=idx)
 
     #Computing reaction forces
@@ -128,14 +134,7 @@ while val < disp_max:
     bc_l = DirichletBC(V.sub(0), Constant(1), 1)
     bc_l.apply(v_reac.sub(0))
     res_l = assemble(action(a, v_reac))
-    #bc_r = DirichletBC(V.sub(0), Constant(-1), 2)
-    #bc_r.apply(v_reac.sub(0))
-    #res_r = assemble(action(a, v_reac))
-    #res = assemble(action(a, v_reac))
-    ##print('Reaction on the right: %.3e' % assemble(res))
-    ##PETSc.Sys.Print('Disp: %.3e' % val)
-    ##PETSc.Sys.Print('Total force: %.3e' % (abs(res_l)+abs(res_r)))
 
     #Save forces
-    with open('force.txt', 'a') as f:
+    with open('force_mech.txt', 'a') as f:
         np.savetxt(f, np.array([2*val, res_l])[None], delimiter=',', fmt='%.3e')
