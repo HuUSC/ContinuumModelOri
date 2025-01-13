@@ -10,9 +10,9 @@ v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 
 # Create mesh
 mesh = Mesh('mesh.msh', name='mesh')
-N = 30
+N = 40
 #mesh = RectangleMesh(N, N, u_s, v_s, diagonal='crossed', name='mesh') #Realistic domain
-#mesh = UnitSquareMesh(N, N, diagonal='crossed') #to compare with Hu
+mesh = UnitSquareMesh(N, N, diagonal='crossed') #to compare with Hu
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -21,7 +21,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val_theta = 2
+val_theta = 1.7 #2.3 #max
 x = SpatialCoordinate(mesh)
 #Mechanism BC
 u_ts_0 = sqrt(3.0) * cos((val_theta + phi) / 2.0)
@@ -55,7 +55,10 @@ sol.sub(0).interpolate(bnd)
 sol.sub(1).interpolate(Constant(val_theta))
 
 #Define the boundary conditions
-bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]
+#bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)]#, DirichletBC(Z.sub(1), Constant(val_theta), 1), DirichletBC(Z.sub(1), Constant(val_theta), 2)] #bowtie
+#bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2), DirichletBC(Z.sub(0), bnd, 3), DirichletBC(Z.sub(0), bnd, 4)] #mechanism
+bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)] #partial mechanism
+
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
@@ -88,7 +91,7 @@ a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen t
 
 #Solve
 #parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
-parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-5}
+parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-8}
 #v_basis = VectorSpaceBasis(constant=True)
 #nullspace = MixedVectorSpaceBasis(Z, [v_basis, Z.sub(1)])
 solve(a == 0, sol, bcs=bcs, solver_parameters=parameters) #nullspace=nullspace
@@ -110,3 +113,20 @@ bc_l = DirichletBC(V.sub(0), Constant(1), 1)
 bc_l.apply(v_reac.sub(0))
 res_l = assemble(action(a, v_reac))
 PETSc.Sys.Print('Total force: %.3e' % (res_l / d_1))
+
+#Save forces
+import numpy as np
+with open('force_lr.txt', 'a') as f:
+    np.savetxt(f, np.array([disp, res_l / d_1])[None], delimiter=',', fmt='%.3e')
+
+
+##Print energies
+#J = sqrt(det(dot(grad(y).T, grad(y))))
+#en = assemble(c_1 * inner(L, L)/J * dx)
+#print(en)
+#en = assemble(d_1 * theta ** 2 * dx)
+#print(en)
+#en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
+#print(en)
+#en = assemble(d_3 * inner(H, H) * dx)
+#print(en)
