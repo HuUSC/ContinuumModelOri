@@ -12,7 +12,7 @@ v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 mesh = Mesh('mesh.msh', name='mesh')
 N = 40
 #mesh = RectangleMesh(N, N, u_s, v_s, diagonal='crossed', name='mesh') #Realistic domain
-mesh = UnitSquareMesh(N, N, diagonal='crossed') #to compare with Hu
+#mesh = UnitSquareMesh(N, N, diagonal='crossed') #to compare with Hu
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -21,7 +21,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val_theta = 1.7 #2.3 #max
+val_theta = 1 #2.3 #max
 x = SpatialCoordinate(mesh)
 #Mechanism BC
 u_ts_0 = sqrt(3.0) * cos((val_theta + phi) / 2.0)
