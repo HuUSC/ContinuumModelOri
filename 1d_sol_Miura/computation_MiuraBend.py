@@ -135,11 +135,14 @@ bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2),
 #        DirichletBC(Z.sub(0), y_ref, 3), DirichletBC(Z.sub(0), y_ref, 4)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+theta = variable(theta)
 u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, variable(theta)) #variable(theta))
-v_t_p = diff(v_ts, variable(theta)) #variable(theta))
+u_t_p = diff(u_ts, theta)
+v_t_p = diff(v_ts, theta)
+# u_t_p = - sqrt(3.0)/2 * sin( (theta+phi)/2 ) # explicit formulas
+# v_t_p = - 3 * sqrt(2) * sin(theta+phi) / ( ( 5-3 * cos(theta+phi) )**(3/2) )
 
 #Preparation for variational form
 H = variable( grad(grad(y)) )
