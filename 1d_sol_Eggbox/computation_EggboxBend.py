@@ -73,14 +73,18 @@ bcs = [DirichletBC(Z.sub(0), y_ref, 1), DirichletBC(Z.sub(0), y_ref, 2),
        DirichletBC(Z.sub(1), theta_ref, 3), DirichletBC(Z.sub(1), theta_ref, 4)]
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-u_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) - variable(theta) )/2 )
-v_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) + variable(theta) )/2 )
+theta = variable(theta)
+u_ts = 2 * sin( ( acos( 1-cos( theta ) ) - theta )/2 )
+v_ts = 2 * sin( ( acos( 1-cos( theta ) ) + theta )/2 )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, variable(theta)) #variable(theta))
-v_t_p = diff(v_ts, variable(theta)) #variable(theta))
+u_t_p = diff(u_ts, theta) #variable(theta))
+v_t_p = diff(v_ts, theta) #variable(theta))
+# u_t_p = - sqrt(3.0)/2 * sin( (theta+phi)/2 ) # explicit formulas
+# v_t_p = - 3 * sqrt(2) * sin(theta+phi) / ( ( 5-3 * cos(theta+phi) )**(3/2) )
 
 #Preparation for variational form
 H = variable( grad(grad(y)) )
+# H = grad(grad(y)) # alternative
 N = cross(y.dx(0), y.dx(1))
 N /= sqrt(inner(N, N))
 L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
@@ -95,6 +99,7 @@ c_1, c_2, d_1, d_2, d_3 = 1.0, 0.5, 1e-3, 0, 0  # working
 dens = (c_1 * inner( L, L ) / J  + c_2 * q**2/( (u_s*v_s)**4 ) + d_1 * inner( H, H)
         + d_2 * inner( grad(theta), grad(theta) ) + d_3 * theta**2)
 G = diff(dens, H)
+# G = 2 * c_2 * q / ( (u_s*v_s)**4 ) * (  v_t_p * v_ts * outer(N, u_0, u_0) + u_t_p * u_ts * outer(N, v_0, v_0) ) + 2 * d_1 * H # alternative
 Energy = dens * dx
 
 # first variation of the energy
