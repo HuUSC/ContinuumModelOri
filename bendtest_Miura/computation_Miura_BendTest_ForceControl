@@ -110,7 +110,8 @@ zeta = TestFunction(W)
 a = derivative(energy, theta_ig, zeta)
 
 #Solve
-solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '4'}) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+# solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '4'}) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+theta_ig.interpolate(theta_0) # constant initial guess
 
 PETSc.Sys.Print('Initial guess ok!\n')
 
