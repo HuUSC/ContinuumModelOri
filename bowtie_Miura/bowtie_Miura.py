@@ -9,9 +9,9 @@ u_s = sqrt(3) * cos(phi/2)
 v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 
 # Create mesh
-mesh = Mesh('mesh.msh', name='mesh')
+#mesh = Mesh('mesh.msh', name='mesh')
 N = 40
-#mesh = RectangleMesh(N, N, u_s, v_s, diagonal='crossed', name='mesh') #Realistic domain
+mesh = RectangleMesh(N, N, u_s, v_s, diagonal='crossed', name='mesh') #Realistic domain
 
 # Define function spaces
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -20,7 +20,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val_theta = 0 #2.2 max for bowtie #2.5 max for mech lr
+val_theta = 2.2 #2.2 max for bowtie #2.5 max for mech lr
 x = SpatialCoordinate(mesh)
 #Mechanism BC
 u_ts_0 = sqrt(3.0) * cos((val_theta + phi) / 2.0)
@@ -55,16 +55,17 @@ sol.sub(0).interpolate(bnd)
 sol.sub(1).interpolate(Constant(val_theta))
 
 #Define the boundary conditions
-#bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2), DirichletBC(Z.sub(0), bnd, 3), DirichletBC(Z.sub(0), bnd, 4)] #mechanism
-bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)] #bowtie
+bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2), DirichletBC(Z.sub(0), bnd, 3), DirichletBC(Z.sub(0), bnd, 4)] #mechanism
+#bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)] #bowtie
 
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, variable(theta)) 
-v_t_p = diff(v_ts, variable(theta)) 
+theta = variable(theta) #test
+u_t_p = diff(u_ts, theta) #variable(theta) 
+v_t_p = diff(v_ts, theta) #variable(theta)
 
 #Preparation for variational form
 H = variable(grad(grad(y)))
@@ -82,15 +83,11 @@ Energy = dens * dx
 a = derivative(Energy, sol, test)
 
 # interior penalty
-en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
-a -= derivative(en_pen, y, w)
+a -= inner( dot(avg(G), n('+')), jump(grad(w))) * dS #consistency term
 a += alpha / h_avg * inner( jump( grad(y), n ), jump( grad(w), n ) ) * dS #pen term
 
 #Solve
-#parameters={"snes_monitor": None, "ksp_type": "preonly", "mat_type": "aij", "pc_type": "lu", "pc_factor_mat_solver_type": "mumps"}
 parameters = {'snes_monitor': None, 'snes_max_it': 25, 'quadrature_degree': '4', 'rtol': 1e-5}
-#v_basis = VectorSpaceBasis(constant=True)
-#nullspace = MixedVectorSpaceBasis(Z, [v_basis, Z.sub(1)])
 solve(a == 0, sol, bcs=bcs, solver_parameters=parameters) #nullspace=nullspace
 
 #plotting the results
@@ -107,14 +104,14 @@ file.write(aux, theta)
 #    afile.save_function(sol)
 #sys.exit()
 
-#Save results
-with CheckpointFile("res_Miura.h5", 'w') as afile:
-    afile.save_mesh(mesh)
-    y = Function(V, name='y')
-    y.assign(sol.sub(0))
-    afile.save_function(y)
-    afile.save_function(theta)
-sys.exit()
+##Save results
+#with CheckpointFile("res_Miura.h5", 'w') as afile:
+#    afile.save_mesh(mesh)
+#    y = Function(V, name='y')
+#    y.assign(sol.sub(0))
+#    afile.save_function(y)
+#    afile.save_function(theta)
+#sys.exit()
 
 #Computing reaction forces
 v_reac = Function(Z)
@@ -123,8 +120,21 @@ bc_l.apply(v_reac.sub(0))
 res_l = assemble(action(a, v_reac))
 PETSc.Sys.Print('Total force: %.3e' % (res_l / d_3))
 
+#Print energies
+J = sqrt(det(dot(grad(y).T, grad(y))))
+en = assemble(c_1 * inner(L, L)/J * dx)
+print('W_1 = %.2e' % en)
+en = assemble(d_3 * theta ** 2 * dx)
+print('theta = %.2e' % en)
+en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
+print('grad theta = %.2e' % en)
+en = assemble(d_1 * inner(H, H) * dx)
+print('Hessian = %.2e' % en)
+en = assemble(.5 * alpha / h_avg * inner( jump( grad(y), n ), jump( grad(y), n ) ) * dS)
+print('Pen = %.2e' % en)
+
 #Save forces
-comp = 'mechanism' #'lr' #'mechanism' #'pinch'
+comp = 'mech' #'lr' #'mech' #'bowtie'
 import numpy as np
 with open('force_%s.txt' % comp, 'a') as f:
     np.savetxt(f, np.array([defo, res_l / d_3])[None], delimiter=',', fmt='%.3e')
@@ -133,15 +143,3 @@ with open('force_%s.txt' % comp, 'a') as f:
 import numpy as np
 with open('actuation_%s.txt' % comp, 'a') as f:
     np.savetxt(f, np.array([defo, min(theta.vector()), max(theta.vector())])[None], delimiter=',', fmt='%.3e')
-
-
-##Print energies
-#J = sqrt(det(dot(grad(y).T, grad(y))))
-#en = assemble(c_1 * inner(L, L)/J * dx)
-#print(en)
-#en = assemble(d_1 * theta ** 2 * dx)
-#print(en)
-#en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
-#print(en)
-#en = assemble(d_3 * inner(H, H) * dx)
-#print(en)

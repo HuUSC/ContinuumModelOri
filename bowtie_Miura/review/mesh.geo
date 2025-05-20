@@ -2,7 +2,7 @@ phi = Pi/6;
 L = Sqrt(3) * Cos(phi/2);
 H = 2 * Sqrt( 2/ ( 5-3 * Cos(phi) ) );
 h = .02; //.03; // mesh size
-l = H/10; //to impose bc
+l = H/30; //to impose bc
 
 Point(1) = {0, 0, 0, h};
 Point(4) = {0, H, 0, h};
