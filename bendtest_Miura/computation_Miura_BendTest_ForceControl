@@ -1,0 +1,223 @@
+import numpy as np
+from firedrake import *
+import sys
+from firedrake.output import *
+from firedrake.petsc import PETSc
+import matplotlib.pyplot as plt
+
+# Create mesh
+#N = 30
+#mesh = UnitSquareMesh(N, N, diagonal='crossed')
+mesh = Mesh('mesh.msh')
+phi = pi/6
+u_s = sqrt(3.0) * cos(phi/2)
+v_s = 2 * sqrt( 2.0/ ( 5-3 * cos(phi) ) )
+
+# elastic parameters
+c_1, c_2, d_1, d_2, d_3 = 1, 0.5, 5e-2, 5e-2, 5e-2
+
+# Define function spaces
+WW = VectorFunctionSpace(mesh, 'CG', 1, dim=3)
+V = VectorFunctionSpace(mesh, "CG", 2, dim=3)
+W = FunctionSpace(mesh, "CG", 1)
+Z = V * W
+x = SpatialCoordinate(mesh)
+PETSc.Sys.Print('Nb dof: %i' % Z.dim())
+
+# Define boundary condition
+theta_0 = 0.5 # compression
+u_ts_0 = sqrt(3.0) * cos((theta_0 + phi) / 2.0)
+v_ts_0 = 2.0 * sqrt(2.0 / (5.0 - 3.0 * cos(theta_0 + phi)))
+x = SpatialCoordinate(mesh)
+# val = 0.1
+u1 = as_vector(( u_ts_0/u_s * x[0], v_ts_0/v_s * x[1], 0))
+# u2 = as_vector((x[0], x[1], 0))
+u2 = as_vector(( u_ts_0/u_s * x[0], v_ts_0/v_s * x[1], 0))
+u2y = x[1]
+u2z = 0
+# bcs = [DirichletBC(V, u1, 1), DirichletBC(V.sub(1), u2y, 2), DirichletBC(V.sub(2), u2z, 2)]
+bcs = [DirichletBC(V, u1, 1), DirichletBC(V, u2, 2)]
+# bcs = [DirichletBC(V, u1, 1)]
+
+#Interior penalty
+alpha = Constant(8.0) #1e2 #penalty parameter
+h = CellDiameter(mesh) # cell diameter
+h_avg = avg(h)  # average size of cells sharing a facet
+n = FacetNormal(mesh) # outward-facing normal vector
+
+#Bilinear form
+u = TrialFunction(V)
+v = TestFunction(V)
+a = inner(grad(grad(u)), grad(grad(v)))*dx \
+  - inner(dot(avg(grad(grad(u))), n('+')), jump(grad(v)))*dS \
+  - inner(jump(grad(u)), dot(avg(grad(grad(v))), n('+')))*dS \
+  + alpha/h_avg*inner(jump(grad(u)), jump(grad(v)))*dS
+
+# Define distributed load
+# Gaussian distribution approximating Point load
+def delta_2d(epsilon):
+  return -1 * exp(-((x[0] - u_s) ** 2 + (x[1] - v_s / 2) ** 2) / (2 * epsilon ** 2)) / (2 * pi * epsilon ** 2)
+
+# Uniform load on a strip
+def step_function(x, epsilon):
+  return conditional(v_s/2 - v_s/20 <= x, -epsilon, 0) - conditional(v_s/2 + v_s/20 <= x, -epsilon, 0)
+
+f = Function(W)
+# f.interpolate(delta_2d(0.2))
+# f.interpolate(step_function(x[1], 1))
+f.interpolate(Constant(0.2)) # uniform load over entire domain
+
+# contours_f = tricontourf(f)
+# plt.colorbar(contours_f)
+# plt.show()
+#
+# sys.exit()
+
+# Linear form
+# L = inner(v, as_vector( (0, 0, delta_2d(0.1)) ) ) * dx
+L = v[2] * f * dx
+
+# Gradient Boundary penalty terms
+# G1 = Constant((-u_ts_0/u_s, 0, 0))
+#Linear
+# L += alpha/h * inner(G1, dot(grad(v), n)) * ds(1) - inner(G1, dot(dot(grad(grad(v)), n), n)) * ds(1)
+# a += alpha/h * inner(dot(grad(u), n), dot(grad(v), n)) * ds(1)
+#Bilinear
+# a -= inner(dot(grad(v), n), dot(dot(grad(grad(u)), n), n)) * ds(1) + inner(dot(grad(u), n), dot(dot(grad(grad(v)), n), n)) * ds(1)
+
+# Solve variational problem
+sol_ig = Function(V, name='IG')
+#v_basis = VectorSpaceBasis(constant=True)
+solve(a == L, sol_ig, bcs, solver_parameters={'quadrature_degree': '4'})
+
+#Compute initial guess for the angle field
+theta_ig = Function(W, name='IG theta')
+# basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+e_1 = Constant((1, 0))
+e_2 = Constant((0, 1))
+u_0 = u_s * e_1
+v_0 = v_s * e_2
+u_ts = sqrt(3.0) * cos( (theta_ig+phi)/2 )
+v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta_ig+phi) ) )
+A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
+
+#defining the energy to minimize
+L = dot(grad(sol_ig).T, grad(sol_ig)) - dot(A_t.T, A_t)
+J = sqrt(det(dot(grad(sol_ig).T, grad(sol_ig))))
+c = d_2/c_1 # d_2/c_1 #coercivity constant
+energy = inner(L, L)/J * dx + c * inner(grad(theta_ig), grad(theta_ig)) * dx
+zeta = TestFunction(W)
+a = derivative(energy, theta_ig, zeta)
+
+#Solve
+# solve(a == 0, theta_ig, solver_parameters={'quadrature_degree': '4'}) #, solver_parameters={'snes_monitor': None, 'snes_max_it': 10}) #bcs=bcs
+theta_ig.interpolate(theta_0) # constant initial guess
+
+PETSc.Sys.Print('Initial guess ok!\n')
+
+#Output initial guess
+# Save solution to file
+surface_ig = Function(WW, name='yeff 3d')
+surface_ig.interpolate(sol_ig-as_vector((x[0], x[1], 0)))
+
+outfile_i = VTKFile("IG.pvd")
+outfile_i.write(surface_ig, theta_ig)
+
+# sys.exit()
+
+#Nonlinear problem
+#Define trial and test functions
+test = TestFunction(Z)
+w, eta = split(test)
+
+#Define solutions
+sol = Function(Z, name='sol')
+y, theta = split(sol)
+
+#Interpolate initial guess
+sol.sub(0).interpolate(sol_ig)
+#Go get code from Hu for the computation of theta
+sol.sub(1).interpolate(theta_ig)
+
+#Define the boundary conditions
+# bcs_ = [DirichletBC(Z.sub(0), u1, 1)]
+bcs_ = [DirichletBC(Z.sub(0), u1, 1), DirichletBC(Z.sub(0), u2, 2)]
+# bcs_ = [DirichletBC(Z.sub(0), u1, 1), DirichletBC(Z.sub(0).sub(1), u2y, 2), DirichletBC(Z.sub(0).sub(2), u2z, 2)]
+
+# basis vectors & reference/deformed Bravais lattice vectors & metric tensor
+# theta = variable(theta)
+u_ts = sqrt(3.0) * cos( (theta+phi)/2 )
+v_ts = 2 * sqrt( 2.0/ ( 5-3 * cos(theta+phi) ) )
+A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
+# u_t_p = diff(u_ts, theta)
+# v_t_p = diff(v_ts, theta)
+u_t_p = - sqrt(3.0)/2 * sin( (theta+phi)/2 )
+v_t_p = - 3 * sqrt(2) * sin(theta+phi) / ( ( 5-3 * cos(theta+phi) )**(3/2) )
+
+#Preparation for variational form
+# H = variable( grad(grad(y)) )
+H = grad(grad(y))
+N = cross(y.dx(0), y.dx(1))
+N /= sqrt(inner(N, N))
+L = dot(grad(y).T, grad(y)) - dot(A_t.T, A_t)
+q = v_t_p * v_ts * inner( H, outer(N, u_0, u_0) ) + u_t_p * u_ts * inner( H, outer(N, v_0, v_0) )
+J = sqrt(det(dot(grad(y).T, grad(y))))
+
+#Total energy
+dens = (c_1 * inner( L, L )/J + c_2 * q**2/( (u_s*v_s)**4 ) + d_1 * inner( H, H)
+        + d_2 * inner( grad(theta), grad(theta) ) + d_3 * theta**2 )
+# G = diff(dens, H)
+G = ( 2 * c_2 * q / ( (u_s*v_s)**4 ) * (  v_t_p * v_ts * outer(N, u_0, u_0) + u_t_p * u_ts * outer(N, v_0, v_0) )
+     + 2 * d_1 * H )
+Energy = dens * dx
+
+# first variation of the energy
+a = derivative(Energy, sol, test)
+
+# Neumman condition
+a -= w[2] * f * dx
+
+# interior penalty
+alpha = Constant(0.1)
+# en_pen = inner( dot(avg(G), n('+')), jump(grad(y))) * dS # consistency and symmetry energy term
+# a -= derivative(en_pen, y, w)
+en_pen = inner( dot(avg(G), n('+')), jump(grad(w))) * dS # consistency term
+a -= en_pen
+a += alpha / h_avg * inner(jump(grad(y)), jump(grad(w))) * dS #pen term
+
+#Boundary penalty term
+# a += alpha/h * inner(dot(grad(y), n), dot(grad(w), n)) * ds(1) # (ds(1) + ds(2))
+# a -= alpha / h * inner(G1, dot(grad(w), n) ) * ds(1) # + alpha / h * inner(G2, dot(grad(w), n) ) * ds(2)
+# a -= inner( dot(dot(G, n), n), dot(grad(w), n) ) * ds(1)
+
+#Solve
+parameters = {'snes_monitor': None, 'snes_max_it': 50, 'quadrature_degree': '4', 'rtol': 1e-8, 'ksp_type': 'preonly', 'pc_type': 'lu'}
+solve(a == 0, sol, bcs=bcs_, solver_parameters=parameters)
+
+
+#Output fields
+surface = Function(WW, name='yeff 3d')
+surface.interpolate(sol.sub(0)-as_vector((x[0], x[1], 0)))
+
+ang = Function(W, name='theta')
+ang.assign(sol.sub(1))
+
+outfile = VTKFile("effields.pvd")
+outfile.write(surface, ang)
+
+# Compression, out-of-plane displacement and force
+strain = 1 - u_ts_0/u_s
+disp_out = sol.sub(0).sub(2).at(u_s/2, v_s/2)
+force = assemble(f * dx)
+print(f"Compression strain = {strain * 100:.2f}%")
+print(f"Out-of-plane displacement in the center = {disp_out:.3f}")
+print(f"total force = {force:.3f}")
+
+#Test
+# y, theta = sol.sub(0), sol.sub(1)
+# print( assemble( c_1 * inner( L, L )/J * dx ) )
+# print( assemble( c_2 * q**2 * dx ) / (u_s*v_s)**4 )
+# print( assemble( d_1 * inner( H, H) * dx ) )
+# print( assemble( d_2 * inner( grad(theta), grad(theta) ) * dx ) )
+# print( assemble( d_3 * theta**2 * dx) )
+

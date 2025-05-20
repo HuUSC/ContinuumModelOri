@@ -59,11 +59,12 @@ bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)] #bowtie
 
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-u_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) - variable(theta) )/2 )
-v_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) + variable(theta) )/2 )
+theta = variable(theta)
+u_ts = 2 * sin( ( acos( 1-cos( theta ) ) - theta )/2 )
+v_ts = 2 * sin( ( acos( 1-cos( theta ) ) + theta )/2 )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-u_t_p = diff(u_ts, variable(theta))
-v_t_p = diff(v_ts, variable(theta)) 
+u_t_p = diff(u_ts, theta)
+v_t_p = diff(v_ts, theta) 
 
 #Preparation for variational form
 H = variable(grad(grad(y)))

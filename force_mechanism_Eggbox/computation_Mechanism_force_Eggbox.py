@@ -145,8 +145,8 @@ while i < max_i:
     u_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) - variable(theta) )/2 )
     v_ts = 2 * sin( ( acos( 1-cos( variable(theta) ) ) + variable(theta) )/2 )
     A_t = as_matrix([[u_ts / u_s, 0.0], [0.0, v_ts / v_s]])
-    # u_t_p = diff(u_ts, sol)
-    # v_t_p = diff(v_ts, sol)
+    # u_t_p = cos( ( acos( 1-cos( theta ) ) - theta )/2 ) * ( -1 - sin(theta) / sqrt( - cos(theta) * ( cos(theta) -2 )  ) )
+    # v_t_p = cos( ( acos( 1-cos( theta ) ) + theta )/2 ) * ( 1 - sin(theta) / sqrt( - cos(theta) * ( cos(theta) -2 )  ) )
 
     # Preparation for variational form
     H = variable(grad(grad(y)))

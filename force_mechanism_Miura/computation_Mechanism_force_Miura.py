@@ -144,8 +144,8 @@ while i < max_i:
     u_ts = sqrt(3.0) * cos((theta + phi) / 2.0)
     v_ts = 2.0 * sqrt(2.0 / (5.0 - 3.0 * cos(theta + phi)))
     A_t = as_matrix([[u_ts / u_s, 0.0], [0.0, v_ts / v_s]])
-    # u_t_p = diff(u_ts, sol)
-    # v_t_p = diff(v_ts, sol)
+    # u_t_p = - sqrt(3.0)/2 * sin( (theta+phi)/2 )
+    # v_t_p = - 3 * sqrt(2) * sin(theta+phi) / ( ( 5-3 * cos(theta+phi) )**(3/2) )
 
     # Preparation for variational form
     H = variable(grad(grad(y)))
