@@ -1,8 +1,8 @@
 phi = Pi/6;
 L = Sqrt(3) * Cos(phi/2);
 H = 2 * Sqrt( 2/ ( 5-3 * Cos(phi) ) );
-h = .02; //.03; // mesh size
-l = H/30; //to impose bc
+h = .02; //.02; // mesh size
+l = H/2.9; //H/16 //to impose bc
 
 Point(1) = {0, 0, 0, h};
 Point(4) = {0, H, 0, h};
@@ -30,4 +30,9 @@ Physical Surface(1) = {1};
 //For bc
 Physical Line(1) = {2};
 Physical Line(2) = {6};
-//Physical Line(3) = {1,3};
+
+//BC for mechanism
+//Physical Line(1) = {1,2,3};
+//Physical Line(2) = {5,6,7};
+//Physical Line(3) = {8};
+//Physical Line(4) = {4};

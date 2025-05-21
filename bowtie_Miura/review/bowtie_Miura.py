@@ -20,7 +20,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val_theta = 2 #2.2 max for bowtie #2.5 max for mech lr
+val_theta = 2 #2 #2.2 max for bowtie #2.5 max for mech lr
 x = SpatialCoordinate(mesh)
 #Mechanism BC
 u_ts_0 = sqrt(3.0) * cos((val_theta + phi) / 2.0)
@@ -30,7 +30,7 @@ defo = 1.0 - u_ts_0 / u_s #Corresponding imposed disp
 PETSc.Sys.Print('Imposed deformation: %.3e' % defo)
 
 #Interior penalty
-alpha = Constant(5e-1) #1e-1 #penalty parameter
+alpha = Constant(5e-1) #5e-1 #penalty parameter
 h = CellDiameter(mesh) # cell diameter
 h_avg = avg(h)  # average size of cells sharing a facet
 n = FacetNormal(mesh) # outward-facing normal vector
@@ -38,8 +38,8 @@ n = FacetNormal(mesh) # outward-facing normal vector
 # elastic parameters
 c_1 = 5 #metric constraint
 d_3 = .1 
-d_2 = 1e-2 * 1.7**2
-d_1 = 1e-2 * 1.7**2
+d_2 = 1e-3 * 1.7**2 #0.01 * 1.7**2 #ref
+d_1 = 1e-3 * 1.7**2 #0.01 * 1.7**2 #ref
 
 #Nonlinear problem
 #Define trial and test functions
@@ -50,9 +50,19 @@ w, eta = split(test)
 sol = Function(Z, name='sol')
 y, theta = split(sol)
 
-#Interpolate initial guess
-sol.sub(0).interpolate(bnd)
-sol.sub(1).interpolate(Constant(val_theta))
+#Open previous results
+with CheckpointFile("res_Miura.h5", 'r') as afile:
+    meshRef = afile.load_mesh("mesh")
+    sol_ref = afile.load_function(meshRef, "sol")
+
+#Interpolate initial guess from previous results
+sol.sub(0).interpolate(sol_ref.sub(0))
+sol.sub(1).interpolate(sol_ref.sub(1))
+
+##Interpolate initial guess
+#sol.sub(0).interpolate(bnd)
+#sol.sub(1).interpolate(Constant(val_theta))
+
 
 #Define the boundary conditions
 #bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2), DirichletBC(Z.sub(0), bnd, 3), DirichletBC(Z.sub(0), bnd, 4)] #mechanism
@@ -63,9 +73,9 @@ bcs = [DirichletBC(Z.sub(0), bnd, 1), DirichletBC(Z.sub(0), bnd, 2)] #bowtie
 u_ts = sqrt(3) * cos( (theta+phi)/2 )
 v_ts = 2 * sqrt( 2/ ( 5-3 * cos(theta+phi) ) )
 A_t = as_matrix( [ [ u_ts/ u_s, 0], [0, v_ts/v_s] ] )
-theta = variable(theta) #test
-u_t_p = diff(u_ts, theta) #variable(theta) 
-v_t_p = diff(v_ts, theta) #variable(theta)
+theta = variable(theta)
+u_t_p = diff(u_ts, theta)
+v_t_p = diff(v_ts, theta)
 
 #Preparation for variational form
 H = variable(grad(grad(y)))
@@ -98,11 +108,11 @@ theta.assign(sol.sub(1))
 file = VTKFile('res_comp.pvd')
 file.write(aux, theta)
 
-##Test
-#with CheckpointFile("res_test.h5", 'w') as afile:
-#    afile.save_mesh(mesh)
-#    afile.save_function(sol)
-#sys.exit()
+#Test
+with CheckpointFile("res_Miura.h5", 'w') as afile:
+    afile.save_mesh(mesh)
+    afile.save_function(sol)
+sys.exit()
 
 ##Save results
 #with CheckpointFile("res_Miura.h5", 'w') as afile:
@@ -112,34 +122,3 @@ file.write(aux, theta)
 #    afile.save_function(y)
 #    afile.save_function(theta)
 #sys.exit()
-
-#Computing reaction forces
-v_reac = Function(Z)
-bc_l = DirichletBC(V.sub(0), Constant(1), 1)
-bc_l.apply(v_reac.sub(0))
-res_l = assemble(action(a, v_reac))
-PETSc.Sys.Print('Total force: %.3e' % (res_l / d_3))
-
-#Print energies
-J = sqrt(det(dot(grad(y).T, grad(y))))
-en = assemble(c_1 * inner(L, L)/J * dx)
-print('W_1 = %.2e' % en)
-en = assemble(d_3 * theta ** 2 * dx)
-print('theta = %.2e' % en)
-en = assemble(d_2 * inner(grad(theta), grad(theta)) * dx)
-print('grad theta = %.2e' % en)
-en = assemble(d_1 * inner(H, H) * dx)
-print('Hessian = %.2e' % en)
-en = assemble(.5 * alpha / h_avg * inner( jump( grad(y), n ), jump( grad(y), n ) ) * dS)
-print('Pen = %.2e' % en)
-
-#Save forces
-comp = 'mech' #'lr' #'mech' #'bowtie'
-import numpy as np
-with open('force_%s.txt' % comp, 'a') as f:
-    np.savetxt(f, np.array([defo, res_l / d_3])[None], delimiter=',', fmt='%.3e')
-
-#Save actuation
-import numpy as np
-with open('actuation_%s.txt' % comp, 'a') as f:
-    np.savetxt(f, np.array([defo, min(theta.vector()), max(theta.vector())])[None], delimiter=',', fmt='%.3e')
