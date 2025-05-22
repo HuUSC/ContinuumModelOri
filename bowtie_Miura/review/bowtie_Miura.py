@@ -4,7 +4,7 @@ from firedrake.output import *
 from firedrake.petsc import PETSc
 
 # basis vectors & reference/deformed Bravais lattice vectors & metric tensor
-phi = pi/6
+phi = pi/6 + .35*pi
 u_s = sqrt(3) * cos(phi/2)
 v_s = 2 * sqrt( 2/ ( 5-3 * cos(phi) ) )
 
@@ -20,7 +20,7 @@ Z = V * W
 PETSc.Sys.Print('Nb dof: %i' % Z.dim())
 
 #Define the boundary conditions
-val_theta = 2 #2 #2.2 max for bowtie #2.5 max for mech lr
+val_theta = 1
 x = SpatialCoordinate(mesh)
 #Mechanism BC
 u_ts_0 = sqrt(3.0) * cos((val_theta + phi) / 2.0)
@@ -38,8 +38,8 @@ n = FacetNormal(mesh) # outward-facing normal vector
 # elastic parameters
 c_1 = 5 #metric constraint
 d_3 = .1 
-d_2 = 1e-3 * 1.7**2 #0.01 * 1.7**2 #ref
-d_1 = 1e-3 * 1.7**2 #0.01 * 1.7**2 #ref
+d_2 = 4e-3 * 1.2**2 #0.01 * 1.2**2 #ref
+d_1 = 4e-3 * 1.2**2 #0.01 * 1.2**2 #ref
 
 #Nonlinear problem
 #Define trial and test functions
@@ -50,18 +50,18 @@ w, eta = split(test)
 sol = Function(Z, name='sol')
 y, theta = split(sol)
 
-#Open previous results
-with CheckpointFile("res_Miura.h5", 'r') as afile:
-    meshRef = afile.load_mesh("mesh")
-    sol_ref = afile.load_function(meshRef, "sol")
+##Open previous results
+#with CheckpointFile("res_Miura.h5", 'r') as afile:
+#    meshRef = afile.load_mesh("mesh")
+#    sol_ref = afile.load_function(meshRef, "sol")
+#
+##Interpolate initial guess from previous results
+#sol.sub(0).interpolate(sol_ref.sub(0))
+#sol.sub(1).interpolate(sol_ref.sub(1))
 
-#Interpolate initial guess from previous results
-sol.sub(0).interpolate(sol_ref.sub(0))
-sol.sub(1).interpolate(sol_ref.sub(1))
-
-##Interpolate initial guess
-#sol.sub(0).interpolate(bnd)
-#sol.sub(1).interpolate(Constant(val_theta))
+#Interpolate initial guess
+sol.sub(0).interpolate(bnd)
+sol.sub(1).interpolate(Constant(val_theta))
 
 
 #Define the boundary conditions
